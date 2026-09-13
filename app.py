@@ -3,9 +3,8 @@ import pandas as pd
 import yfinance as yf
 import plotly.graph_objects as go
 import plotly.io as pio
-import base64
-import html as html_lib
 from datetime import date, timedelta
+from html import escape
 
 from src.preprocessing.feature_engineering import engineer_features
 from src.sentiment.news_loader import load_stock_news
@@ -25,212 +24,486 @@ st.set_page_config(
 
 pio.templates.default = "plotly_white"
 
-# Palette supplied by the user:
-# muted red, deep red, green, olive, yellow-olive
+# Professional Stock Market Dark Theme - MarketMind AI
 PALETTE = {
-    "red": "#9D4647",
-    "deep_red": "#7E1114",
-    "green": "#006D40",
-    "olive": "#3B4514",
-    "yellow": "#B2B33A",
-    "navy": "#18263D",
-    "ink": "#202A35",
-    "muted": "#566273",
-    "line": "#D9DED7",
-    "paper": "#FFFFFF",
-    "soft": "#F5F6F0",
+    # Core Brand Colors - Professional Finance Dark Theme
+    "navy": "#0D1117",                  # Darkest - Main background (GitHub dark inspired)
+    "blue": "#0FA3B1",                  # Professional teal - Primary accent
+    "blue_dark": "#40A9B5",             # Lighter teal for hover states
+    "cyan": "#06C8D9",                  # Bright cyan - Secondary accent
+    "purple": "#6366F1",                # Indigo - Neutral accent
+    "violet": "#7C3AED",                # Violet - Highlights
+    "sky_blue": "#0EADC6",              # Sky blue - Info states
+    "indigo": "#4F46E5",                # Indigo - Alternative accent
+
+    # Status Colors - Professional
+    "green": "#00D084",                 # Professional green (bullish)
+    "red": "#FF5366",                   # Professional red (bearish)
+    "amber": "#FFB81C",                 # Professional amber (warnings)
+
+    # Text & UI - Professional Finance
+    "text_light": "#FFFFFF",            # Pure white text
+    "text_secondary": "#FEFEFE",        # Secondary text
+    "ink": "#FBFDF2",                   # Light text
+    "muted": "#8B90A3",
+
+    # UI Elements - Professional Dark
+    "line": "#2D333B",                  # Subtle borders
+    "paper": "#161B22",                 # Card background
+    "soft": "#0D1117",                  # Darker background
+    "white": "#918A8A",
 }
 
-# ============================================================
-# GLOBAL UI
+
+#===========================================================
+# GLOBAL UI - PROFESSIONAL AI WEBSITE THEME
 # ============================================================
 st.markdown(f"""
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
 
 :root {{
-  --red:{PALETTE['red']}; --deep-red:{PALETTE['deep_red']}; --green:{PALETTE['green']};
-  --olive:{PALETTE['olive']}; --yellow:{PALETTE['yellow']}; --navy:{PALETTE['navy']};
+  --navy:{PALETTE['navy']}; --blue:{PALETTE['blue']}; --blue-dark:{PALETTE['blue_dark']};
+  --cyan:{PALETTE['cyan']}; --purple:{PALETTE['purple']}; --violet:{PALETTE['violet']};
+  --sky-blue:{PALETTE['sky_blue']}; --indigo:{PALETTE['indigo']};
+  --green:{PALETTE['green']}; --red:{PALETTE['red']}; --amber:{PALETTE['amber']};
+  --text-light:{PALETTE['text_light']}; --text-secondary:{PALETTE['text_secondary']};
   --ink:{PALETTE['ink']}; --muted:{PALETTE['muted']}; --line:{PALETTE['line']};
   --paper:{PALETTE['paper']}; --soft:{PALETTE['soft']};
 }}
 
-html {{ scroll-behavior:smooth; scroll-padding-top:112px; }}
+html {{ scroll-behavior:smooth; scroll-padding-top:100px; }}
 body, .stApp, [class*="css"] {{ font-family:'Inter',sans-serif; }}
 .stApp {{
-  color:var(--ink);
+  color:var(--text-light);
   background:
-    radial-gradient(circle at 5% 10%, rgba(0,109,64,.11), transparent 28%),
-    radial-gradient(circle at 95% 20%, rgba(178,179,58,.12), transparent 28%),
-    linear-gradient(135deg,#F4F7EF 0%,#EEF4EE 45%,#F4F3E8 100%);
+    radial-gradient(circle at 5% 10%, rgba(15,163,177,.04), transparent 28%),
+    radial-gradient(circle at 95% 20%, rgba(99,102,241,.03), transparent 28%),
+    linear-gradient(135deg,#0D1117 0%,#0D1117 50%,#0D1117 100%);
 }}
-.block-container {{ max-width:1540px; padding:116px 2rem 4rem; }}
+.block-container {{ max-width:1540px; padding:120px 2rem 4rem; }}
 #MainMenu, footer {{ visibility:hidden; }}
 header[data-testid="stHeader"] {{ background:transparent; }}
 
 /* ---------- splash ---------- */
-.mm-splash {{ position:fixed; inset:0; z-index:999999; background:#172238; display:flex; align-items:center; justify-content:center; text-align:center; animation:mmFade 1s ease 1.65s forwards; pointer-events:none; }}
+.mm-splash {{ position:fixed; inset:0; z-index:999999; background:#0B1220; display:flex; align-items:center; justify-content:center; text-align:center; animation:mmFade 1s ease 1.65s forwards; pointer-events:none; }}
 .mm-splash-inner {{ width:min(620px,90vw); }}
 .mm-logo {{ display:flex; align-items:center; justify-content:center; gap:12px; }}
-.mm-logo-mark {{ width:58px; height:58px; border-radius:16px; background:linear-gradient(145deg,var(--green),var(--yellow)); color:#fff; display:grid; place-items:center; font-weight:900; font-size:25px; box-shadow:0 14px 34px rgba(0,0,0,.25); }}
+.mm-logo-mark {{ width:58px; height:58px; border-radius:16px; background:linear-gradient(145deg,#0FA3B1,#06C8D9); color:#fff; display:grid; place-items:center; font-weight:900; font-size:25px; box-shadow:0 14px 34px rgba(15,163,177,.35); }}
 .mm-logo-name {{ color:#fff; font-size:42px; font-weight:800; letter-spacing:-.05em; }}
-.mm-logo-name span {{ color:var(--yellow); }}
-.mm-splash-sub {{ color:#C8D0DA; margin-top:13px; font-size:15px; }}
-.mm-loader {{ height:4px; background:#2C374A; border-radius:20px; overflow:hidden; margin-top:30px; }}
-.mm-loader:after {{ content:''; display:block; height:100%; width:0; background:linear-gradient(90deg,var(--green),var(--yellow)); animation:mmLoad 1.45s ease forwards; }}
-.mm-splash-status {{ color:#AEB8C6; font-size:12px; margin-top:13px; }}
+.mm-logo-name span {{ color:var(--blue); }}
+.mm-splash-sub {{ color:#CBD5E1; margin-top:13px; font-size:15px; }}
+.mm-loader {{ height:4px; background:#1E293B; border-radius:20px; overflow:hidden; margin-top:30px; }}
+.mm-loader:after {{ content:''; display:block; height:100%; width:0; background:linear-gradient(90deg,var(--blue),var(--purple)); animation:mmLoad 1.45s ease forwards; }}
+.mm-splash-status {{ color:#94A3B8; font-size:12px; margin-top:13px; }}
 @keyframes mmLoad {{ to {{ width:100%; }} }}
 @keyframes mmFade {{ to {{ opacity:0; visibility:hidden; }} }}
 
 /* ---------- fixed navigation ---------- */
 .mm-topbar {{
-  position:fixed; top:0; left:0; right:0; z-index:99998; height:76px;
-  display:flex; align-items:center; gap:22px; padding:0 25px;
-  background:linear-gradient(100deg,var(--green) 0%,#2D6845 48%,var(--olive) 100%);
-  box-shadow:0 8px 28px rgba(23,34,56,.18);
+  position:fixed; top:0; left:0; right:0; z-index:99998; height:92px;
+  display:flex; align-items:center; gap:16px; padding:0 32px;
+  background: linear-gradient(90deg, #0D1117 0%, #161B22 50%, #0D1117 100%);
+  box-shadow: 0 8px 32px rgba(0,0,0,.6);
+  border-bottom: 1px solid rgba(15,163,177,.2);
+  backdrop-filter: blur(12px);
 }}
-.mm-nav-brand {{ min-width:205px; color:#fff!important; text-decoration:none!important; }}
-.mm-nav-brand-main {{ font-size:21px; font-weight:800; letter-spacing:-.04em; }}
-.mm-nav-brand-main span {{ color:#E3E45A; }}
-.mm-nav-brand-sub {{ display:block; font-size:9px; letter-spacing:.16em; font-weight:700; opacity:.78; margin-top:3px; }}
-.mm-nav {{ flex:1; display:flex; justify-content:center; align-items:center; gap:4px; overflow-x:auto; scrollbar-width:none; white-space:nowrap; }}
+.mm-nav-brand {{ min-width:220px; color:#fff!important; text-decoration:none!important; display: flex; align-items: center; gap: 12px; }}
+.mm-nav-brand-mark {{ width:48px; height:48px; border-radius:12px; background: linear-gradient(135deg, #0FA3B1 0%, #06C8D9 100%); color:#fff; display:grid; place-items:center; font-weight:900; font-size:22px; box-shadow: 0 8px 24px rgba(15,163,177,.4); }}
+.mm-nav-brand-main {{ font-size:22px; font-weight:850; letter-spacing:-.04em; background: linear-gradient(135deg, #0FA3B1 0%, #06C8D9 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }}
+.mm-nav-brand-sub {{ display:block; font-size:10px; letter-spacing:.15em; font-weight:700; opacity:.75; margin-top:2px; color: #40A9B5; }}
+.mm-nav {{ flex:1; display:flex; justify-content:center; align-items:center; gap:8px; overflow-x:auto; scrollbar-width:none; white-space:nowrap; }}
 .mm-nav::-webkit-scrollbar {{ display:none; }}
-.mm-nav a {{ color:#fff!important; text-decoration:none!important; font-size:13px; font-weight:650; padding:11px 13px; border-radius:22px; transition:.16s; display:inline-block; }}
-.mm-nav a:hover {{ background:rgba(255,255,255,.14); }}
-.mm-live {{ white-space:nowrap; color:#fff; background:rgba(255,255,255,.12); border:1px solid rgba(255,255,255,.18); border-radius:20px; padding:8px 11px; font-size:11px; font-weight:800; }}
-.mm-live-dot {{ color:#DDE85B; margin-right:5px; }}
+.mm-nav a {{ 
+  position:relative; z-index:1; color:#B0B3B8!important; text-decoration:none!important; font-size:13px; font-weight:650; 
+  padding:10px 16px; border-radius:8px; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); 
+  display:inline-block; cursor:pointer; pointer-events:auto;
+  border: 1px solid transparent;
+}}
+.mm-nav a:hover {{ 
+  background: rgba(15,163,177,.25); 
+  border-color: rgba(15,163,177,.5);
+  color: #06C8D9 !important;
+  transform: translateY(-2px);
+  box-shadow: 0 8px 16px rgba(15,163,177,.25);
+}}
+.mm-nav a.active {{
+  background: rgba(15,163,177,.35);
+  border-color: #0FA3B1;
+  color: #06C8D9 !important;
+  box-shadow: 0 0 20px rgba(15,163,177,.4);
+}}
+.mm-live {{ white-space:nowrap; color:#fff; background:linear-gradient(135deg, rgba(15,163,177,.3) 0%, rgba(99,102,241,.2) 100%); border:1px solid rgba(15,163,177,.5); border-radius:20px; padding:8px 14px; font-size:11px; font-weight:800; display: flex; align-items: center; gap: 6px; box-shadow: 0 0 16px rgba(15,163,177,.25); }}
+.mm-live-dot {{ color:#0FA3B1; animation: pulse 2s infinite; }}
+@keyframes pulse {{ 0%, 100% {{ opacity: 1; }} 50% {{ opacity: 0.6; }} }}
 
 /* ---------- page sections/cards ---------- */
-.anchor-target {{ scroll-margin-top:112px; height:0; }}
-.mm-section {{ scroll-margin-top:112px; margin-bottom:20px; }}
-.mm-card {{ background:var(--paper); border:1px solid var(--line); border-radius:22px; box-shadow:0 9px 30px rgba(28,48,44,.07); padding:27px 29px; margin-bottom:20px; }}
-.mm-title {{ color:var(--navy); font-size:26px; line-height:1.2; font-weight:750; margin:0; letter-spacing:-.025em; }}
-.mm-sub {{ color:#4D5968; font-size:14px; line-height:1.65; margin-top:7px; }}
-.mm-eyebrow {{ color:var(--green); text-transform:uppercase; letter-spacing:.13em; font-size:10px; font-weight:800; }}
-.mm-metric {{ background:#fff; border:1px solid #DDE2DC; border-radius:15px; padding:16px 17px; height:100%; }}
-.mm-metric label {{ display:block; color:#4E5B6A; font-size:11px; font-weight:600; margin-bottom:7px; }}
-.mm-metric strong {{ display:block; color:var(--navy); font-size:19px; font-weight:750; }}
-.mm-metric span {{ display:block; color:#596575; font-size:11px; margin-top:5px; line-height:1.4; }}
+.anchor-target {{ display:block; scroll-margin-top:100px; height:1px; }}
+.mm-section {{ scroll-margin-top:100px; margin-bottom:24px; }}
+.mm-card {{ 
+  background: var(--paper); 
+  border: 1px solid #2D333B;
+  border-radius: 16px; 
+  box-shadow: 0 4px 12px rgba(0,0,0,.4);
+  padding: 28px 32px; 
+  margin-bottom: 24px;
+  position: relative;
+  overflow: hidden;
+  transition: all 0.3s ease;
+}}
+.mm-card::before {{
+  content: '';
+  position: absolute;
+  top: -40%;
+  right: -40%;
+  width: 300px;
+  height: 300px;
+  background: radial-gradient(circle, rgba(15,163,177,.08) 0%, transparent 70%);
+  border-radius: 50%;
+  pointer-events: none;
+}}
+.mm-card:hover {{
+  border-color: rgba(15,163,177,.35);
+  box-shadow: 0 8px 24px rgba(15,163,177,.12);
+  transform: translateY(-2px);
+}}
+.mm-title {{ color:var(--text-light); font-size:26px; line-height:1.2; font-weight:750; margin:0; letter-spacing:-.025em; background: linear-gradient(135deg, #FFFFFF 0%, #40A9B5 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }}
+.mm-sub {{ color:#B0B3B8; font-size:14px; line-height:1.65; margin-top:7px; }}
+.mm-eyebrow {{ color:#0FA3B1; text-transform:uppercase; letter-spacing:.13em; font-size:10px; font-weight:800; }}
+.mm-metric {{ background:#0D1117; border:1px solid #2D333B; border-radius:15px; padding:16px 17px; height:100%; }}
+.mm-metric label {{ display:block; color:#8B90A3; font-size:11px; font-weight:600; margin-bottom:7px; }}
+.mm-metric strong {{ display:block; color:var(--text-light); font-size:19px; font-weight:750; }}
+.mm-metric span {{ display:block; color:#B0B3B8; font-size:11px; margin-top:5px; line-height:1.4; }}
 
 /* ---------- hero ---------- */
-.hero {{ min-height:190px; display:flex; align-items:center; }}
-.hero h1 {{ color:var(--navy); font-size:38px; margin:5px 0 9px; letter-spacing:-.045em; }}
-.hero p {{ color:#4C5867; max-width:850px; font-size:15px; line-height:1.7; margin:0; }}
-.hero-chips {{ display:flex; flex-wrap:wrap; gap:8px; margin-top:21px; }}
-.hero-chip {{ border:1px solid #D8E0D5; background:#F5F7F0; color:var(--green); border-radius:18px; padding:8px 12px; font-size:11px; font-weight:750; }}
-
-/* ---------- sticky side indicator ONLY ---------- */
-/* The marker is inside the Streamlit side column. Fix the actual
-   Streamlit column because separate st.markdown elements are siblings
-   in the DOM and cannot be kept inside the marker div. */
-div[data-testid="column"]:has(.sticky-panel) {{
-    position: fixed !important;
-    top: 94px !important;
-    right: 24px !important;
-    width: 330px !important;
-    max-width: 330px !important;
-    max-height: calc(100vh - 112px) !important;
-    overflow-y: auto !important;
-    overflow-x: hidden !important;
-    z-index: 999999 !important;
+.hero {{ min-height:200px; display:flex; align-items:center; background: linear-gradient(135deg, rgba(15,163,177,.08) 0%, rgba(99,102,241,.05) 100%); border-radius: 16px; padding: 24px; margin: -28px -32px 0 -32px; }}
+.hero h1 {{ 
+  color: var(--text-light); 
+  font-size: 42px; 
+  margin: 8px 0 12px;
+  letter-spacing: -.045em;
+  background: linear-gradient(135deg, #06C8D9 0%, #40A9B5 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  font-weight: 900;
+}}
+.hero p {{ color:#B0B3B8; max-width:850px; font-size:15px; line-height:1.7; margin:0; }}
+.hero-chips {{ display:flex; flex-wrap:wrap; gap:10px; margin-top:20px; }}
+.hero-chip {{ 
+  border: 1px solid rgba(15,163,177,.4); 
+  background: linear-gradient(135deg, rgba(15,163,177,.1) 0%, rgba(99,102,241,.08) 100%);
+  color: #0EADC6; 
+  border-radius: 20px; 
+  padding: 10px 14px; 
+  font-size: 11px; 
+  font-weight: 750;
+  letter-spacing: 0.05em;
+  transition: all 0.3s ease;
+}}
+.hero-chip:hover {{
+  border-color: #0FA3B1;
+  background: rgba(15,163,177,.2);
+  box-shadow: 0 4px 12px rgba(15,163,177,.25);
+  transform: translateY(-2px);
 }}
 
-.sticky-panel {{ display:block !important; }}
-.ai-panel {{ background:#fff; border:1px solid var(--line); border-radius:22px; box-shadow:0 12px 35px rgba(25,43,45,.10); overflow:hidden; }}
-.ai-panel-head {{ padding:22px 21px 18px; border-bottom:1px solid #E1E5DE; }}
-.ai-panel-title {{ color:var(--navy); font-size:22px; font-weight:800; letter-spacing:-.025em; }}
-.ai-panel-sub {{ color:#53606F; font-size:12px; line-height:1.55; margin-top:5px; }}
-.ai-signal {{ margin:18px 21px; padding:17px; border-radius:16px; background:linear-gradient(135deg,#F4F7EF,#EEF4EA); border:1px solid #DCE3D6; }}
-.ai-signal-label {{ color:#586474; font-size:10px; text-transform:uppercase; letter-spacing:.11em; font-weight:800; }}
-.ai-signal-value {{ color:var(--green); font-size:27px; font-weight:800; margin-top:3px; }}
-.ai-score {{ color:var(--navy); font-size:12px; font-weight:700; margin-top:3px; }}
-.ai-list {{ padding:0 21px 21px; }}
-.ai-list-row {{ display:flex; justify-content:space-between; gap:10px; padding:11px 0; border-bottom:1px solid #ECEFEA; font-size:12px; }}
-.ai-list-row span {{ color:#586474; }} .ai-list-row b {{ color:var(--navy); }}
-.ai-why {{ margin-top:14px; padding:13px; background:#F7F7F3; border-left:3px solid var(--yellow); border-radius:9px; color:#4D5968; font-size:11px; line-height:1.6; }}
-.ai-cta {{ display:block; text-align:center; margin-top:16px; padding:12px; border-radius:10px; background:linear-gradient(90deg,var(--green),var(--olive)); color:#fff!important; text-decoration:none!important; font-weight:800; font-size:12px; }}
+/* ---------- sticky recommendation panel ---------- */
 
+.sticky-panel {{
+    position: fixed !important;
+    top: 100px !important;
+    right: 24px !important;
+    width: 360px !important;
+    max-height: calc(100vh - 120px) !important;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+    z-index: 2147483647 !important;
+    margin: 0 !important;
+    transform: translateZ(0) !important;
+}}
+
+.sticky-panel::-webkit-scrollbar {{
+    width: 6px;
+}}
+
+.sticky-panel::-webkit-scrollbar-thumb {{
+    background: #C8D0C6;
+    border-radius: 10px;
+}}
+
+@media (max-width: 1200px) {{
+    .sticky-panel {{
+        width: 320px !important;
+        right: 16px !important;
+    }}
+}}
+
+@media (max-width: 900px) {{
+    .sticky-panel {{
+        position: fixed !important;
+        top: 90px !important;
+        right: 12px !important;
+        width: 320px !important;
+        max-width: calc(100vw - 24px) !important;
+        max-height: calc(100vh - 105px) !important;
+        overflow-y: auto !important;
+        z-index: 2147483647 !important;
+    }}
+}}
+
+.ai-panel {{
+    background: #0D1117;
+    border: 1px solid #0FA3B1;
+    border-radius: 22px;
+    box-shadow: 0 12px 35px rgba(15,163,177,.25);
+    overflow: hidden;
+}}
+
+.ai-panel-head {{
+    padding: 22px 21px 18px;
+    border-bottom: 1px solid #2D333B;
+}}
+
+.ai-panel-title {{
+    color: var(--text-light);
+    font-size: 22px;
+    font-weight: 800;
+    letter-spacing: -.025em;
+}}
+
+.ai-panel-sub {{
+    color: #B0B3B8;
+    font-size: 12px;
+    line-height: 1.55;
+    margin-top: 5px;
+}}
+
+.ai-signal {{
+    margin: 18px 21px;
+    padding: 17px;
+    border-radius: 16px;
+    background: linear-gradient(135deg,rgba(15,163,177,.15),rgba(99,102,241,.1));
+    border: 1px solid rgba(15,163,177,.3);
+}}
+
+.ai-signal-label {{
+    color: #8B90A3;
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: .11em;
+    font-weight: 800;
+}}
+
+.ai-signal-value {{
+    color: #06C8D9;
+    font-size: 27px;
+    font-weight: 800;
+    margin-top: 3px;
+}}
+
+.ai-score {{
+    color: var(--text-light);
+    font-size: 12px;
+    font-weight: 700;
+    margin-top: 3px;
+}}
+
+.ai-list {{
+    padding: 0 21px 21px;
+}}
+
+.ai-list-row {{
+    display: flex;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 11px 0;
+    border-bottom: 1px solid #2D333B;
+    font-size: 12px;
+}}
+
+.ai-list-row span {{
+    color: #8B90A3;
+}}
+
+.ai-list-row b {{
+    color: var(--text-light);
+}}
+
+.ai-why {{
+    margin-top: 14px;
+    padding: 13px;
+    background: rgba(15,163,177,.1);
+    border-left: 3px solid #0FA3B1;
+    border-radius: 9px;
+    color: #06C8D9;
+    font-size: 11px;
+    line-height: 1.6;
+}}
+
+.ai-cta {{
+    display: block;
+    text-align: center;
+    margin-top: 16px;
+    padding: 12px;
+    border-radius: 10px;
+    background: linear-gradient(90deg,#0FA3B1,#06C8D9);
+    color: #fff !important;
+    text-decoration: none !important;
+    font-weight: 800;
+    font-size: 12px;
+    transition: all 0.3s ease;
+}}
+.ai-cta:hover {{
+    background: linear-gradient(90deg,#06C8D9,#0EADC6);
+    box-shadow: 0 8px 24px rgba(15,163,177,.4);
+    transform: translateY(-2px);
+}}
 /* ---------- risk meter ---------- */
 .risk-box {{ text-align:center; padding:5px 0 3px; }}
-.risk-gauge {{ width:260px; height:130px; margin:8px auto 0; position:relative; overflow:hidden; border-radius:260px 260px 0 0; background:conic-gradient(from 270deg at 50% 100%,var(--green) 0 20%,var(--yellow) 20% 40%,#D5B72B 40% 57%,var(--red) 57% 77%,var(--deep-red) 77% 100%); }}
-.risk-gauge:after {{ content:''; position:absolute; left:27px; right:27px; bottom:-1px; height:99px; border-radius:200px 200px 0 0; background:#fff; }}
-.risk-needle {{ position:absolute; z-index:3; left:50%; bottom:5px; width:4px; height:90px; background:#1F2A39; transform-origin:50% 100%; border-radius:6px; }}
-.risk-dot {{ position:absolute; z-index:4; left:calc(50% - 8px); bottom:-1px; width:16px; height:16px; border-radius:50%; background:#1F2A39; }}
-.risk-scale {{ display:flex; justify-content:space-between; width:260px; margin:7px auto 0; color:#596575; font-size:9px; font-weight:700; }}
-.risk-label {{ color:var(--navy); font-size:12px; font-weight:850; margin-top:6px; }}
+.risk-gauge {{ width:260px; height:130px; margin:8px auto 0; position:relative; overflow:hidden; border-radius:260px 260px 0 0; background:conic-gradient(from 270deg at 50% 100%,#00D084 0 20%,#FFB81C 20% 40%,#FFB81C 40% 57%,#FF5366 57% 77%,#E41E49 77% 100%); }}
+.risk-gauge:after {{ content:''; position:absolute; left:27px; right:27px; bottom:-1px; height:99px; border-radius:200px 200px 0 0; background:#161B22; }}
+.risk-needle {{ position:absolute; z-index:3; left:50%; bottom:5px; width:4px; height:90px; background:#FFFFFF; transform-origin:50% 100%; border-radius:6px; }}
+.risk-dot {{ position:absolute; z-index:4; left:calc(50% - 8px); bottom:-1px; width:16px; height:16px; border-radius:50%; background:#FFFFFF; }}
+.risk-scale {{ display:flex; justify-content:space-between; width:260px; margin:7px auto 0; color:#B0B3B8; font-size:9px; font-weight:700; }}
+.risk-label {{ color:var(--text-light); font-size:12px; font-weight:850; margin-top:6px; }}
 
 /* ---------- charts ---------- */
 .chart-note {{ color:#526071; font-size:12px; margin:7px 0 12px; }}
 
 /* ---------- Tata-style returns ---------- */
-.returns-wrap {{ overflow-x:auto; border:1px solid #D8DED8; border-radius:16px; }}
+.returns-wrap {{ overflow-x:auto; border:1px solid #2D333B; border-radius:16px; }}
 .returns-table {{ width:100%; min-width:920px; border-collapse:separate; border-spacing:0; font-size:13px; overflow:hidden; }}
-.returns-table th {{ padding:15px 11px; color:#fff; background:linear-gradient(90deg,var(--green),#267D52); text-align:center; font-weight:750; border-right:1px solid rgba(255,255,255,.22); }}
-.returns-table td {{ padding:14px 11px; border-top:1px solid #E5E9E3; text-align:center; color:#283443; background:#fff; }}
-.returns-table td:first-child {{ text-align:left; font-weight:700; background:#F5F6F3; }}
-.returns-table .green {{ color:var(--green); font-weight:800; }}
-.disclaimer {{ color:#526071; font-size:11px; margin-top:10px; }}
+.returns-table th {{ padding:15px 11px; color:#FFFFFF; background:linear-gradient(90deg,#0FA3B1,#4F46E5); text-align:center; font-weight:750; border-right:1px solid rgba(255,255,255,.15); }}
+.returns-table td {{ padding:14px 11px; border-top:1px solid #2D333B; text-align:center; color:#FFFFFF; background:#161B22; }}
+.returns-table td:first-child {{ text-align:left; font-weight:700; background:#0D1117; }}
+.returns-table .green {{ color:#00D084; font-weight:800; }}
+.disclaimer {{ color:#B0B3B8; font-size:11px; margin-top:10px; }}
 
 /* ---------- company cards ---------- */
-.company-card {{ background:#fff; border:1px solid #D9DED7; border-radius:19px; padding:20px; box-shadow:0 7px 22px rgba(30,50,45,.06); height:100%; }}
+.company-card {{ background:#161B22; border:1px solid #2D333B; border-radius:19px; padding:20px; box-shadow:0 4px 12px rgba(0,0,0,.4); height:100%; }}
 .company-top {{ display:flex; justify-content:space-between; gap:10px; align-items:flex-start; }}
-.company-name {{ color:var(--navy); font-size:17px; font-weight:800; }}
-.company-ticker {{ color:#596575; font-size:10px; margin-top:3px; }}
-.company-score {{ color:var(--green); font-size:25px; font-weight:850; line-height:1; }}
-.signal-pill {{ display:inline-block; margin-top:9px; padding:6px 10px; border-radius:16px; background:#EEF5EC; color:var(--green); font-size:10px; font-weight:800; }}
-.signal-pill.neutral {{ background:#F0F1ED; color:#596575; }}
-.signal-pill.negative {{ background:#F8ECEA; color:var(--deep-red); }}
-.company-row {{ display:flex; justify-content:space-between; gap:10px; padding-top:9px; margin-top:9px; border-top:1px solid #ECEFEA; font-size:11px; }}
-.company-row span {{ color:#596575; }} .company-row b {{ color:var(--navy); }}
+.company-name {{ color:var(--text-light); font-size:17px; font-weight:800; }}
+.company-ticker {{ color:#8B90A3; font-size:10px; margin-top:3px; }}
+.company-score {{ color:#0FA3B1; font-size:25px; font-weight:850; line-height:1; }}
+.signal-pill {{ display:inline-block; margin-top:9px; padding:6px 10px; border-radius:16px; background:rgba(15,163,177,.15); color:#0EADC6; font-size:10px; font-weight:800; }}
+.signal-pill.neutral {{ background:#2D333B; color:#8B90A3; }}
+.signal-pill.negative {{ background:rgba(255,83,102,.15); color:#FF5366; }}
+.company-row {{ display:flex; justify-content:space-between; gap:10px; padding-top:9px; margin-top:9px; border-top:1px solid #2D333B; font-size:11px; }}
+.company-row span {{ color:#8B90A3; }} .company-row b {{ color:var(--text-light); }}
 
 /* ---------- FAQ collapsed ---------- */
-.faq-list {{ border-top:1px solid #DDE2DC; margin-top:16px; }}
-.faq-item {{ border-bottom:1px solid #DDE2DC; }}
-.faq-item summary {{ list-style:none; cursor:pointer; padding:18px 4px; color:var(--navy); font-size:15px; font-weight:700; display:flex; align-items:center; justify-content:space-between; gap:20px; }}
+.faq-list {{ border-top:1px solid #2D333B; margin-top:16px; }}
+.faq-item {{ border-bottom:1px solid #2D333B; }}
+.faq-item summary {{ list-style:none; cursor:pointer; padding:18px 4px; color:var(--text-light); font-size:15px; font-weight:700; display:flex; align-items:center; justify-content:space-between; gap:20px; }}
 .faq-item summary::-webkit-details-marker {{ display:none; }}
-.faq-item summary:after {{ content:'+'; width:28px; height:28px; display:grid; place-items:center; border-radius:50%; background:#EEF3EC; color:var(--green); font-size:19px; flex:none; }}
+.faq-item summary:after {{ content:'+'; width:28px; height:28px; display:grid; place-items:center; border-radius:50%; background:rgba(15,163,177,.15); color:#0FA3B1; font-size:19px; flex:none; }}
 .faq-item[open] summary:after {{ content:'−'; }}
-.faq-answer {{ color:#4F5C6B; font-size:13px; line-height:1.7; padding:0 32px 18px 4px; }}
+.faq-answer {{ color:#B0B3B8; font-size:13px; line-height:1.7; padding:0 32px 18px 4px; }}
 
 /* ---------- sidebar ---------- */
-section[data-testid="stSidebar"] {{ background:linear-gradient(180deg,#F1F4EC 0%,#E9EFE8 100%); border-right:1px solid #D7DDD5; }}
+section[data-testid="stSidebar"] {{ background:linear-gradient(180deg,#161B22 0%,#0D1117 100%); border-right:1px solid #2D333B; }}
 section[data-testid="stSidebar"] .block-container {{ padding-top:1.2rem; }}
 .mm-side-logo {{ display:flex; align-items:center; gap:10px; margin-bottom:17px; }}
-.mm-side-mark {{ width:36px; height:36px; border-radius:10px; background:linear-gradient(145deg,var(--green),var(--yellow)); color:#fff; display:grid; place-items:center; font-weight:900; }}
-.mm-side-name {{ color:var(--navy); font-size:18px; font-weight:850; }}
-.mm-side-sub {{ color:#596575; font-size:10px; margin-top:2px; }}
-.company-directory {{ margin-top:12px; padding-top:13px; border-top:1px solid #D7DDD5; }}
-.directory-item {{ padding:8px 0; border-bottom:1px solid #E0E4DE; }}
-.directory-name {{ color:var(--navy); font-size:11px; font-weight:750; }}
-.directory-ticker {{ color:#596575; font-size:9px; margin-top:2px; }}
+.mm-side-mark {{ width:36px; height:36px; border-radius:10px; background:linear-gradient(145deg,#0FA3B1,#06C8D9); color:#fff; display:grid; place-items:center; font-weight:900; }}
+.mm-side-name {{ color:var(--text-light); font-size:18px; font-weight:850; }}
+.mm-side-sub {{ color:#8B90A3; font-size:10px; margin-top:2px; }}
+.company-directory {{ margin-top:12px; padding-top:13px; border-top:1px solid #2D333B; }}
+.directory-item {{ padding:8px 0; border-bottom:1px solid #2D333B; }}
+.directory-name {{ color:var(--text-light); font-size:11px; font-weight:750; }}
+.directory-ticker {{ color:#8B90A3; font-size:9px; margin-top:2px; }}
 
 /* ---------- bottom company directory ---------- */
-.bottom-company {{ background:#fff; border:1px solid #D9DED7; border-radius:18px; padding:17px; height:100%; }}
-.bottom-company strong {{ color:var(--navy); font-size:13px; }}
-.bottom-company span {{ display:block; color:#596575; font-size:10px; margin-top:4px; line-height:1.45; }}
+.bottom-company {{ background:#161B22; border:1px solid #2D333B; border-radius:18px; padding:17px; height:100%; }}
+.bottom-company strong {{ color:var(--text-light); font-size:13px; }}
+.bottom-company span {{ display:block; color:#8B90A3; font-size:10px; margin-top:4px; line-height:1.45; }}
 
+/* ---------- selected-company news ---------- */
+.news-grid {{ display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:13px; margin-top:18px; }}
+.news-card {{ display:flex; flex-direction:column; min-height:285px; overflow:hidden; background:#161B22; border:1px solid #2D333B; border-radius:16px; box-shadow:0 5px 16px rgba(0,0,0,.3); }}
+.news-image {{ width:100%; height:135px; object-fit:cover; background:#0D1117; }}
+.news-image-placeholder {{ display:grid; place-items:center; width:100%; height:135px; background:linear-gradient(135deg,#0FA3B1,#06C8D9); color:#FFFFFF; font-size:11px; font-weight:800; letter-spacing:.08em; }}
+.news-content {{ display:flex; flex:1; flex-direction:column; padding:15px 17px 17px; }}
+.news-meta {{ color:#8B90A3; font-size:11px; font-weight:700; }}
+.news-title {{ color:var(--text-light); font-size:15px; line-height:1.45; font-weight:750; margin-top:10px; }}
+.news-sentiment {{ display:inline-flex; align-self:flex-start; margin-top:12px; padding:5px 8px; border-radius:12px; background:rgba(0,208,132,.15); color:#00D084; font-size:10px; font-weight:800; }}
+.news-sentiment.negative {{ background:rgba(255,83,102,.15); color:#FF5366; }}
+.news-sentiment.neutral {{ background:#F1F5F9; color:#475569; }}
+.news-link {{ color:var(--green)!important; text-decoration:none!important; font-size:11px; font-weight:800; margin-top:auto; padding-top:14px; }}
+.news-empty {{ margin-top:18px; padding:18px; border:1px dashed #B8C5CF; border-radius:14px; color:#526071; background:#F8FAFC; font-size:13px; }}
+.data-grid {{ display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:12px; margin-top:18px; }}
 
-.news-list {{ display:flex; flex-direction:column; gap:12px; margin-top:16px; }}
-.news-card {{ display:grid; grid-template-columns:220px minmax(0,1fr); gap:18px; align-items:stretch; background:#fff; border:1px solid #D7E1D5; border-radius:16px; padding:12px; box-shadow:0 5px 16px rgba(12,52,44,.045); }}
-.news-card:hover {{ box-shadow:0 9px 22px rgba(12,52,44,.08); }}
-.news-media {{ width:220px; height:132px; overflow:hidden; border-radius:11px; background:#EAF1E6; }}
-.news-media img {{ width:100%; height:100%; object-fit:cover; display:block; }}
-.news-placeholder {{ width:100%; height:100%; display:flex; flex-direction:column; align-items:center; justify-content:center; background:linear-gradient(135deg,#06231D,#076653); color:#E3EF26; font-weight:900; letter-spacing:.1em; font-size:13px; }}
-.news-placeholder small {{ margin-top:6px; color:#DCE9E2; font-size:8px; letter-spacing:.16em; }}
-.news-content {{ min-width:0; display:flex; flex-direction:column; justify-content:center; padding-right:4px; }}
-.news-title {{ color:#162A25; font-size:17px; line-height:1.4; font-weight:900; margin-bottom:7px; }}
-.news-meta {{ color:#53675E; font-size:12px; font-weight:700; margin-bottom:7px; }}
-.news-sentiment {{ color:#29483F; font-size:12px; font-weight:800; margin-bottom:8px; }}
-.news-sentiment .score {{ color:#006D40; }}
-.news-link a {{ color:#076653 !important; text-decoration:none !important; font-size:12px; font-weight:900; }}
-.news-link a:hover {{ text-decoration:underline !important; }}
-.news-empty {{ padding:22px; text-align:center; border:1px dashed #BFCFC1; border-radius:14px; color:#53675E; background:#F7FAF1; }}
+/* ---------- plain-language company comparison ---------- */
+.comparison-list {{ display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:14px; margin-top:18px; }}
+.comparison-card {{ background:#fff; border:1px solid #D8E1E7; border-radius:17px; padding:18px; }}
+.comparison-head {{ display:flex; justify-content:space-between; gap:12px; align-items:flex-start; }}
+.comparison-rank {{ color:var(--green); font-size:11px; font-weight:850; text-transform:uppercase; letter-spacing:.08em; }}
+.comparison-name {{ color:var(--navy); font-size:17px; font-weight:800; margin-top:4px; }}
+.comparison-view {{ color:var(--green); background:#EEF6F5; border-radius:14px; padding:6px 9px; font-size:11px; font-weight:800; white-space:nowrap; }}
+.comparison-view.negative {{ color:var(--deep-red); background:#FEF1F0; }}
+.comparison-view.neutral {{ color:#475569; background:#F1F5F9; }}
+.comparison-summary {{ color:#475569; font-size:13px; line-height:1.55; margin-top:13px; }}
+.comparison-tags {{ display:flex; flex-wrap:wrap; gap:7px; margin-top:14px; }}
+.comparison-tag {{ border:1px solid #D8E1E7; border-radius:14px; padding:5px 8px; color:#475569; font-size:10px; font-weight:750; }}
+
 @media(max-width:1050px) {{
   .mm-topbar {{ gap:10px; padding:0 12px; }} .mm-nav-brand {{ min-width:150px; }} .mm-nav a {{ font-size:11px; padding:9px 8px; }} .mm-live {{ display:none; }}
+  .news-grid {{ grid-template-columns:repeat(2,minmax(0,1fr)); }}
+  .data-grid {{ grid-template-columns:repeat(2,minmax(0,1fr)); }}
+  .comparison-list {{ grid-template-columns:1fr; }}
 }}
 @media(max-width:760px) {{
   .block-container {{ padding:96px 1rem 3rem; }} .mm-nav {{ display:none; }} .mm-nav-brand {{ min-width:auto; }} .mm-card {{ padding:21px; }} .hero h1 {{ font-size:30px; }} .risk-gauge,.risk-scale {{ width:220px; }}
+  .news-grid {{ grid-template-columns:1fr; }}
+  .data-grid {{ grid-template-columns:1fr; }}
 }}
+
+/* ---------- calculator layout ---------- */
+/* Keep the calculator directly after the Analytics indicators. */
+#calculator {{
+    margin-top: -20px;
+}}
+
+#calculator + section {{
+    min-height: 0 !important;
+    overflow: visible !important;
+    padding-bottom: 0 !important;
+    margin-bottom: 0 !important;
+}}
+
+/* Calculator labels */
+div[data-testid="stRadio"] label,
+div[data-testid="stNumberInput"] label,
+div[data-testid="stSlider"] label {{
+    color: #18263D !important;
+    font-weight: 650 !important;
+}}
+
+/* Radio text */
+div[data-testid="stRadio"] label p {{
+    color: #18263D !important;
+}}
+
+/* Number input text */
+div[data-testid="stNumberInput"] input {{
+    color: #FFFFFF !important;
+}}
+
+/* Slider labels and values */
+div[data-testid="stSlider"] label p {{
+    color: #18263D !important;
+}}
+
+div[data-testid="stSlider"] [data-testid="stTickBarMin"],
+div[data-testid="stSlider"] [data-testid="stTickBarMax"] {{
+    color: #53606F !important;
+}}
+
+/* Keep calculator columns fully visible */
+#calculator + section .mm-card {{
+    overflow: visible !important;
+}}
+
 </style>
 
 <div class="mm-splash">
@@ -360,84 +633,6 @@ def render_risk_meter(label, position):
       <div class="risk-label">{label}</div>
     </div>
     """, unsafe_allow_html=True)
-
-
-
-@st.cache_data(show_spinner=False)
-def load_news_with_images(ticker, company_name, limit=10):
-    """Safely load Yahoo Finance news, including thumbnail images."""
-    columns = ["title", "publisher", "published", "link", "image"]
-    try:
-        raw_news = yf.Ticker(ticker).get_news(count=limit, tab="news")
-    except Exception:
-        raw_news = []
-    records = []
-    for article in raw_news or []:
-        if not isinstance(article, dict):
-            continue
-        content = article.get("content") or {}
-        if not isinstance(content, dict):
-            content = {}
-        title = content.get("title") or article.get("title") or "Financial market news"
-        provider = content.get("provider") or {}
-        if not isinstance(provider, dict):
-            provider = {}
-        publisher = provider.get("displayName") or article.get("publisher") or "Unknown"
-        published = content.get("pubDate") or content.get("displayTime") or article.get("published")
-        canonical = content.get("canonicalUrl") or content.get("clickThroughUrl") or article.get("link") or ""
-        link = canonical.get("url", "") if isinstance(canonical, dict) else str(canonical)
-        thumb = content.get("thumbnail") or {}
-        if not isinstance(thumb, dict):
-            thumb = {}
-        image = thumb.get("originalUrl") or ""
-        resolutions = thumb.get("resolutions")
-        if not image and isinstance(resolutions, list) and resolutions:
-            first = resolutions[0]
-            if isinstance(first, dict):
-                image = first.get("url") or ""
-        if not image:
-            raw_image = content.get("image") or article.get("image") or ""
-            image = raw_image.get("url", "") if isinstance(raw_image, dict) else str(raw_image)
-        records.append({"title":str(title),"publisher":str(publisher),"published":published,"link":link,"image":str(image or "")})
-    result = pd.DataFrame(records, columns=columns)
-    if result.empty:
-        return result
-    result["published"] = pd.to_datetime(result["published"], errors="coerce", utc=True).dt.tz_localize(None)
-    return result.drop_duplicates(subset=["title", "link"], keep="first").head(limit).reset_index(drop=True)
-
-
-def prepare_news_for_display(ticker, company_name, limit=10):
-    news = load_news_with_images(ticker, company_name, limit)
-    if news.empty:
-        try:
-            news = load_stock_news(ticker, limit=limit)
-            if news is None:
-                return pd.DataFrame(columns=["title","publisher","published","link","image"])
-            news = news.copy()
-            if "image" not in news.columns:
-                news["image"] = ""
-        except Exception:
-            return pd.DataFrame(columns=["title","publisher","published","link","image"])
-    original_images = news["image"].copy() if "image" in news.columns else pd.Series("", index=news.index)
-    try:
-        cleaned = clean_news_data(news)
-        news = cleaned if cleaned is not None else news
-    except Exception:
-        pass
-    if "image" not in news.columns:
-        news["image"] = original_images.reindex(news.index).fillna("")
-    try:
-        news = add_sentiment_scores(news)
-    except Exception:
-        news["sentiment"] = news.get("sentiment", "Neutral")
-        news["sentiment_score"] = pd.to_numeric(news.get("sentiment_score", 0), errors="coerce").fillna(0)
-    return news.reset_index(drop=True)
-
-
-def news_image_html(image_url, title):
-    if image_url:
-        return f'<img src="{html_lib.escape(str(image_url), quote=True)}" alt="{html_lib.escape(str(title)[:80])}" loading="lazy">'
-    return '<div class="news-placeholder"><span>MARKETMIND</span><small>FINANCIAL NEWS</small></div>'
 
 
 def recommendation_score(df, predicted=None, sentiment_score=0):
@@ -585,10 +780,10 @@ try:
 except Exception:
     pass
 
-news_df = pd.DataFrame(columns=["title", "publisher", "published", "link", "image"])
-summary = {"overall_sentiment": "Neutral", "average_score": 0}
+news_df = pd.DataFrame()
+summary = {"overall_sentiment":"Neutral", "average_score":0}
 try:
-    news_df = prepare_news_for_display(ticker, selected_stock, limit=10)
+    news_df = add_sentiment_scores(clean_news_data(load_stock_news(ticker, limit=10)))
     if not news_df.empty:
         summary = get_sentiment_summary(news_df)
 except Exception:
@@ -606,24 +801,76 @@ volatility = safe_float(df["Close"].pct_change().dropna().std() * (252 ** .5) * 
 risk_label, risk_position = risk_from_volatility(volatility)
 
 # ============================================================
-# FIXED TOP NAV — ACTUAL ANCHOR LINKS TO ONE PAGE
+# FIXED TOP NAV — PROFESSIONAL AI NAVIGATION WITH SMOOTH SCROLLING
 # ============================================================
 nav = [
-    ("overview", "Overview"), ("nav", "Markets"), ("markets", "Analytics"), ("news", "News"),
-    ("ai-signal", "AI Signal"), ("calculator", "Calculator"), ("holding", "Holding Analysis"),
-    ("returns", "Returns"), ("company-info", "Company Info"), ("risk", "Riskometer"),
-    ("faq", "FAQ")
+    ("nav", "Market Performance"), 
+    ("markets", "🎯 Analytics"),
+    ("news", "Recent News"), 
+    ("ai-signal", "AI Recommended Companies"),
+    ("quick-decision-guide", "Quick Decision Guide"),
+    ("actual-vs-predicted", "Actual vs Predicted"),
+    ("data-sources", "Transparency"),
 ]
-nav_html = "".join([f'<a href="#{anchor}">{label}</a>' for anchor, label in nav])
+
+nav_html = "".join([f'<a href="#{anchor}" class="nav-link" data-section="{anchor}">{label}</a>' for anchor, label in nav])
+
 st.markdown(f"""
 <div class="mm-topbar">
   <a class="mm-nav-brand" href="#overview">
-    <div class="mm-nav-brand-main">Market<span>Mind</span> AI</div>
-    <span class="mm-nav-brand-sub">AI MARKET INTELLIGENCE</span>
+    <div class="mm-nav-brand-mark">📈</div>
+    <div>
+      <div class="mm-nav-brand-main">MarketMind AI</div>
+      <span class="mm-nav-brand-sub">AI INTELLIGENCE</span>
+    </div>
   </a>
   <nav class="mm-nav">{nav_html}</nav>
-  <div class="mm-live"><span class="mm-live-dot">●</span>LIVE</div>
+  <div class="mm-live"><span class="mm-live-dot">●</span> LIVE DATA</div>
 </div>
+
+<script>
+// Smooth scroll and active nav link detection
+document.addEventListener('DOMContentLoaded', function() {{
+  const navLinks = document.querySelectorAll('.nav-link');
+  const sections = document.querySelectorAll('[id]');
+  
+  // Smooth scroll on click
+  navLinks.forEach(link => {{
+    link.addEventListener('click', function(e) {{
+      e.preventDefault();
+      const target = this.getAttribute('href').substring(1);
+      const element = document.getElementById(target);
+      if (element) {{
+        element.scrollIntoView({{ behavior: 'smooth', block: 'start' }});
+        // Update active state
+        updateActiveNav(target);
+      }}
+    }});
+  }});
+  
+  // Update active nav on scroll
+  window.addEventListener('scroll', () => {{
+    let currentSection = '';
+    sections.forEach(section => {{
+      const sectionTop = section.offsetTop;
+      const sectionHeight = section.clientHeight;
+      if (window.pageYOffset >= sectionTop - 150) {{
+        currentSection = section.getAttribute('id');
+      }}
+    }});
+    if (currentSection) updateActiveNav(currentSection);
+  }});
+  
+  function updateActiveNav(activeId) {{
+    navLinks.forEach(link => {{
+      link.classList.remove('active');
+      if (link.getAttribute('data-section') === activeId) {{
+        link.classList.add('active');
+      }}
+    }});
+  }}
+}});
+</script>
 """, unsafe_allow_html=True)
 
 # ============================================================
@@ -654,7 +901,7 @@ with main_col:
     </div>
     <div class="mm-card">
       <div class="mm-title">Overview</div>
-      <div class="mm-sub">A compact view of the selected company's current market position.</div>
+      <div class="mm-sub">MarketMind AI is an intelligent stock market research platform that combines machine learning, technical analysis, financial news sentiment, and risk analysis to generate data-driven stock insights and recommendations.</div>
       <div style="height:16px"></div>
     """, unsafe_allow_html=True)
     mc = st.columns(5)
@@ -675,9 +922,9 @@ with main_col:
     st.markdown('<div id="nav" class="anchor-target"></div><section class="mm-section">', unsafe_allow_html=True)
     st.markdown('<div class="mm-card"><div class="mm-title">Market Performance</div><div class="mm-sub">Interactive price history with moving-average context. Use the chart controls to zoom, pan or open a larger view.</div>', unsafe_allow_html=True)
     fig_nav = go.Figure()
-    fig_nav.add_trace(go.Scatter(x=df["Date"], y=df["Close"], name="Price", mode="lines", line=dict(color=PALETTE["green"], width=2.7), fill="tozeroy", fillcolor="rgba(0,109,64,.07)"))
+    fig_nav.add_trace(go.Scatter(x=df["Date"], y=df["Close"], name="Price", mode="lines", line=dict(color=PALETTE["green"], width=2.7), fill="tozeroy", fillcolor="rgba(15,118,110,.07)"))
     if "SMA_20" in df.columns:
-        fig_nav.add_trace(go.Scatter(x=df["Date"], y=df["SMA_20"], name="SMA 20", mode="lines", line=dict(color=PALETTE["yellow"], width=1.8)))
+        fig_nav.add_trace(go.Scatter(x=df["Date"], y=df["SMA_20"], name="SMA 20", mode="lines", line=dict(color=PALETTE["cyan"], width=1.8)))
     chart_layout(fig_nav, f"{selected_stock} — Price Trend", 455)
     st.plotly_chart(fig_nav, use_container_width=True, key="nav_chart", config={"displayModeBar": True, "displaylogo": False, "responsive": True, "modeBarButtonsToAdd": ["fullscreen"]})
     st.markdown('</div></section>', unsafe_allow_html=True)
@@ -753,7 +1000,7 @@ with main_col:
     h1, h2 = st.columns(2)
     with h1:
         fig_h = go.Figure()
-        fig_h.add_trace(go.Bar(x=df["Date"], y=df["Volume"], name="Volume", marker_color=PALETTE["olive"]))
+        fig_h.add_trace(go.Bar(x=df["Date"], y=df["Volume"], name="Volume", marker_color=PALETTE["text_secondary"]))
         chart_layout(fig_h, "Trading Volume", 370)
         st.plotly_chart(fig_h, use_container_width=True, key="holding_volume", config={"displayModeBar": True, "displaylogo": False, "responsive": True, "modeBarButtonsToAdd": ["fullscreen"]})
     with h2:
@@ -768,19 +1015,55 @@ with main_col:
     # --------------------------------------------------------
     st.markdown('<div id="returns" class="anchor-target"></div><section class="mm-section">', unsafe_allow_html=True)
     st.markdown('<div class="mm-card"><div class="mm-title">Returns over the years</div><div class="mm-sub">Historical annualized performance with a ₹10,000 comparison, presented in a single table module.</div>', unsafe_allow_html=True)
-    periods = [("Selected Period", len(df)-1), ("Last 1 Year", min(252, len(df)-1)), ("Last 3 Years", min(756, len(df)-1)), ("Last 5 Years", min(1260, len(df)-1))]
+    # Calculate returns only when the selected date range contains enough
+    # trading history for the requested period. This prevents the 1Y, 3Y and
+    # 5Y rows from incorrectly showing the same value when only one year of
+    # data has been loaded.
+    available_days = len(df) - 1
+    periods = [
+        ("Selected Period", available_days, True),
+        ("Last 1 Year", 252, available_days >= 252),
+        ("Last 3 Years", 756, available_days >= 756),
+        ("Last 5 Years", 1260, available_days >= 1260),
+    ]
     rows = []
-    for label, n in periods:
+    for label, n, available in periods:
         if n <= 0:
             continue
+        if not available:
+            rows.append((label, None, None, None, None, None, None))
+            continue
         start_p = safe_float(df["Close"].iloc[-n-1])
-        ret = ((current / start_p) ** (252/n) - 1) * 100 if start_p else 0
+        if start_p <= 0 or current <= 0:
+            rows.append((label, None, None, None, None, None, None))
+            continue
+        # Annualised return over the actual requested trading period.
+        ret = ((current / start_p) ** (252 / n) - 1) * 100
         benchmark = ret - 0.65
         additional = ret - 0.73
-        rows.append((label, ret, benchmark, additional, 10000*(1+ret/100), 10000*(1+benchmark/100), 10000*(1+additional/100)))
+        rows.append((label, ret, benchmark, additional,
+                     10000 * (1 + ret / 100),
+                     10000 * (1 + benchmark / 100),
+                     10000 * (1 + additional / 100)))
     html = '<table class="returns-table"><thead><tr><th>Period</th><th>Annualized (%)</th><th>Benchmark (%)</th><th>Additional Benchmark (%)</th><th colspan="3">Current value of ₹10,000 invested</th></tr><tr><th></th><th></th><th></th><th></th><th>Scheme</th><th>Benchmark</th><th>Additional Benchmark</th></tr></thead><tbody>'
     for row in rows:
-        html += f'<tr><td>{row[0]}</td><td class="green">{row[1]:.2f}%</td><td>{row[2]:.2f}%</td><td>{row[3]:.2f}%</td><td class="green">₹{row[4]:,.0f}</td><td>₹{row[5]:,.0f}</td><td>₹{row[6]:,.0f}</td></tr>'
+        if row[1] is None:
+            html += (
+                f'<tr><td>{row[0]}</td>'
+                '<td colspan="6" style="color:#7A8491;font-style:italic;">'
+                'Not enough historical data for this period'
+                '</td></tr>'
+            )
+        else:
+            html += (
+                f'<tr><td>{row[0]}</td>'
+                f'<td class="green">{row[1]:.2f}%</td>'
+                f'<td>{row[2]:.2f}%</td>'
+                f'<td>{row[3]:.2f}%</td>'
+                f'<td class="green">₹{row[4]:,.0f}</td>'
+                f'<td>₹{row[5]:,.0f}</td>'
+                f'<td>₹{row[6]:,.0f}</td></tr>'
+            )
     html += '</tbody></table>'
     st.markdown(f'<div class="returns-wrap">{html}</div><div class="disclaimer">Past performance may or may not be sustained in future. Benchmark figures here are illustrative dashboard comparisons.</div></div></section>', unsafe_allow_html=True)
 
@@ -819,10 +1102,41 @@ with main_col:
     st.markdown('</div></section>', unsafe_allow_html=True)
 
     # --------------------------------------------------------
-    # DOCUMENTS / DATA
+    # RECENT NEWS — SELECTED COMPANY
     # --------------------------------------------------------
-    st.markdown('<section class="mm-section">', unsafe_allow_html=True)
-    st.markdown('''<div class="mm-card"><div class="mm-title">Documents & Data</div><div class="mm-sub">Research inputs used by MarketMind AI.</div><div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-top:18px"><div class="mm-metric"><label>01</label><strong>Market Data</strong><span>Selected historical price dataset</span></div><div class="mm-metric"><label>02</label><strong>Model Metrics</strong><span>MAE · RMSE · R²</span></div><div class="mm-metric"><label>03</label><strong>News Data</strong><span>Sentiment inputs</span></div><div class="mm-metric"><label>04</label><strong>Research Notes</strong><span>AI signal rationale</span></div></div></div></section>''', unsafe_allow_html=True)
+    st.markdown('<div id="news" class="anchor-target"></div><section class="mm-section">', unsafe_allow_html=True)
+    st.markdown(f'<div class="mm-card"><div class="mm-eyebrow">Live company coverage</div><div class="mm-title">Recent news about {escape(selected_stock)}</div><div class="mm-sub">Latest headlines returned for {escape(ticker)}. Sentiment is an automated reading of each headline, not investment advice.</div>', unsafe_allow_html=True)
+    if news_df.empty:
+        st.markdown('<div class="news-empty">Recent news is temporarily unavailable for this company. Try refreshing the dashboard in a moment.</div>', unsafe_allow_html=True)
+    else:
+        news_html = '<div class="news-grid">'
+        for _, article in news_df.head(6).iterrows():
+            title = escape(str(article.get("title", "Financial market update")))
+            publisher = escape(str(article.get("publisher", "Market source")))
+            published = article.get("published")
+            published_text = "Recent"
+            if pd.notna(published):
+                try:
+                    published_text = pd.to_datetime(published).strftime("%d %b %Y")
+                except Exception:
+                    pass
+            sentiment = str(article.get("sentiment", "Neutral")).title()
+            sentiment_class = "negative" if sentiment == "Negative" else "neutral" if sentiment == "Neutral" else ""
+            article_url = str(article.get("link", ""))
+            image_url = str(article.get("image", ""))
+            image_html = f'<img class="news-image" src="{escape(image_url, quote=True)}" alt="" loading="lazy">' if image_url.startswith(("https://", "http://")) else '<div class="news-image-placeholder">MARKET UPDATE</div>'
+            link_html = f'<a class="news-link" href="{escape(article_url, quote=True)}" target="_blank" rel="noopener noreferrer">Read source →</a>' if article_url.startswith(("https://", "http://")) else ''
+            news_html += f'<article class="news-card">{image_html}<div class="news-content"><div class="news-meta">{publisher} · {published_text}</div><div class="news-title">{title}</div><span class="news-sentiment {sentiment_class}">{sentiment}</span>{link_html}</div></article>'
+        news_html += '</div>'
+        st.markdown(news_html, unsafe_allow_html=True)
+    st.markdown('</div></section>', unsafe_allow_html=True)
+
+    # --------------------------------------------------------
+    # DATA SOURCES / MODEL INPUTS
+    # --------------------------------------------------------
+    model_r2 = safe_float(ml_result.get("r2"), 0) if ml_result else None
+    model_status = f"R² {model_r2:.2f}" if model_r2 is not None else "Unavailable"
+    st.markdown(f'''<div id="data-sources" class="anchor-target"></div><section class="mm-section"><div class="mm-card"><div class="mm-eyebrow">Transparency</div><div class="mm-title">Data sources & model inputs</div><div class="mm-sub">A concise record of the inputs used for the current {escape(selected_stock)} analysis.</div><div class="data-grid"><div class="mm-metric"><label>MARKET DATA</label><strong>{escape(ticker)}</strong><span>Yahoo Finance · {start_date} to {end_date}</span></div><div class="mm-metric"><label>PRICE HISTORY</label><strong>{len(df):,} sessions</strong><span>OHLCV data after validation</span></div><div class="mm-metric"><label>NEWS INPUT</label><strong>{len(news_df):,} headlines</strong><span>Latest selected-company articles</span></div><div class="mm-metric"><label>MODEL CHECK</label><strong>{model_status}</strong><span>Random Forest evaluation metric</span></div></div><div class="disclaimer">Data can be delayed, incomplete, or revised by the source. The dashboard is for research and education only.</div></div></section>''', unsafe_allow_html=True)
 
     # --------------------------------------------------------
     # FAQ — answers hidden by default
@@ -842,35 +1156,6 @@ with main_col:
     faq_html += '</div></div>'
     st.markdown(faq_html, unsafe_allow_html=True)
     st.markdown('</section>', unsafe_allow_html=True)
-
-    # --------------------------------------------------------
-    # RECENT FINANCIAL NEWS — IMAGE LEFT / TEXT RIGHT
-    # --------------------------------------------------------
-    st.markdown('<div id="news" class="anchor-target"></div><section class="mm-section">', unsafe_allow_html=True)
-    st.markdown('<div class="mm-card"><div class="mm-title">Recent Financial News</div><div class="mm-sub">See the latest headlines used in the sentiment analysis for the selected company.</div>', unsafe_allow_html=True)
-    if news_df.empty:
-        st.markdown('<div class="news-empty">No recent financial news is available for this company right now.</div>', unsafe_allow_html=True)
-    else:
-        st.markdown('<div class="news-list">', unsafe_allow_html=True)
-        for _, article in news_df.iterrows():
-            title = html_lib.escape(str(article.get("title", "Financial News")))
-            publisher = html_lib.escape(str(article.get("publisher", "Unknown")))
-            link = html_lib.escape(str(article.get("link", "")), quote=True)
-            image = news_image_html(article.get("image", ""), article.get("title", "Financial News"))
-            sentiment = html_lib.escape(str(article.get("sentiment", "Neutral")))
-            score = safe_float(article.get("sentiment_score", 0), 0)
-            published = article.get("published")
-            if pd.notna(published):
-                try:
-                    published_text = pd.to_datetime(published).strftime("%d %b %Y")
-                except Exception:
-                    published_text = "Recent"
-            else:
-                published_text = "Recent"
-            link_html = f'<a href="{link}" target="_blank" rel="noopener noreferrer">Read article →</a>' if link else ''
-            st.markdown(f'''<div class="news-card"><div class="news-media">{image}</div><div class="news-content"><div class="news-title">{title}</div><div class="news-meta">{publisher} · {published_text}</div><div class="news-sentiment">Sentiment: {sentiment} <span class="score">({score:.2f})</span></div><div class="news-link">{link_html}</div></div></div>''', unsafe_allow_html=True)
-        st.markdown('</div>', unsafe_allow_html=True)
-    st.markdown('</div></section>', unsafe_allow_html=True)
 
     # --------------------------------------------------------
     # AI RECOMMENDATIONS — FULL WIDTH, LAST MAJOR SECTION
@@ -914,9 +1199,15 @@ with main_col:
         display["AI Score"] = display["AI Score"].map(lambda x: f"{x:.0f}/100")
         display["Volatility %"] = display["Volatility %"].map(lambda x: f"{x:.1f}%")
         display["R²"] = display["R²"].map(lambda x: f"{x:.2f}")
-        st.markdown("### Full comparison")
-        st.dataframe(display, use_container_width=True, hide_index=True)
-        st.caption("Ranking is a model-based research aid, not personalized investment advice.")
+        comparison_html = '<div id="quick-decision-guide" class="anchor-target"></div><div class="mm-card"><div class="mm-eyebrow">Quick decision guide</div><div class="mm-title">Company comparison</div><div class="mm-sub">Get a quick AI view of direction, opportunity, and risk at a glance</div><div class="comparison-list">'
+        for rank, (_, row) in enumerate(ranking_df.iterrows(), start=1):
+            forecast_change = safe_float(row["Forecast %"], 0)
+            direction = "could move higher" if forecast_change > 0.5 else "could be broadly flat" if forecast_change >= -0.5 else "could face downward pressure"
+            change_text = f"about {abs(forecast_change):.1f}%" if abs(forecast_change) >= 0.5 else "with little change"
+            view_class = "negative" if row["Signal Class"] == "negative" else "neutral" if row["Signal Class"] == "neutral" else ""
+            comparison_html += f'''<article class="comparison-card"><div class="comparison-head"><div><div class="comparison-rank">Rank #{rank}</div><div class="comparison-name">{escape(str(row["Company"]))}</div></div><span class="comparison-view {view_class}">{escape(str(row["Signal"]))} view</span></div><div class="comparison-summary">The model suggests this share {direction} by {change_text}. {escape(str(row["Reason"]))}</div><div class="comparison-tags"><span class="comparison-tag">Risk: {escape(str(row["Risk"]))}</span><span class="comparison-tag">Price swings: {safe_float(row["Volatility %"], 0):.1f}%</span><span class="comparison-tag">AI confidence: {safe_float(row["AI Score"], 0):.0f}/100</span></div></article>'''
+        comparison_html += '</div><div class="disclaimer">Ranking is a model-based research aid, not personalized investment advice.</div></div>'
+        st.markdown(comparison_html, unsafe_allow_html=True)
     st.markdown('</section>', unsafe_allow_html=True)
 
     # --------------------------------------------------------
@@ -945,7 +1236,7 @@ with main_col:
     st.markdown('</div></section>', unsafe_allow_html=True)
 
     if ml_result is not None and not prediction_df.empty:
-        st.markdown('<section class="mm-section">', unsafe_allow_html=True)
+        st.markdown('<div id="actual-vs-predicted" class="anchor-target"></div><section class="mm-section">', unsafe_allow_html=True)
         st.markdown('<div class="mm-card"><div class="mm-title">Actual vs Predicted</div><div class="mm-sub">Model evaluation view. Use fullscreen in the graph controls for a larger view.</div>', unsafe_allow_html=True)
         fig_pred = go.Figure()
         x = prediction_df["Date"] if "Date" in prediction_df.columns else prediction_df.index
@@ -955,37 +1246,48 @@ with main_col:
         st.plotly_chart(fig_pred, use_container_width=True, key="prediction_chart", config={"displayModeBar": True, "displaylogo": False, "responsive": True, "modeBarButtonsToAdd": ["fullscreen"]})
         st.markdown('</div></section>', unsafe_allow_html=True)
 
-with side_col:
-    # --------------------------------------------------------
-    # STICKY AI RECOMMENDATION — SAME POSITION WHILE SCROLLING
-    # --------------------------------------------------------
-    st.markdown('<div class="sticky-panel">', unsafe_allow_html=True)
-    st.markdown(f"""
-    <div class="ai-panel">
-      <div class="ai-panel-head">
-        <div class="mm-eyebrow">MarketMind recommendation</div>
-        <div class="ai-panel-title">{selected_stock}</div>
-        <div class="ai-panel-sub">Live research summary for the selected company.</div>
-      </div>
-      <div class="ai-signal">
-        <div class="ai-signal-label">AI Signal</div>
-        <div class="ai-signal-value">{signal}</div>
-        <div class="ai-score">AI Research Score · {ai_score}/100</div>
-      </div>
-    """, unsafe_allow_html=True)
-    render_risk_meter(f"{risk_label.upper()} RISK", risk_position)
-    st.markdown(f"""
-      <div class="ai-list">
-        <div class="ai-list-row"><span>Current price</span><b>₹{current:,.2f}</b></div>
-        <div class="ai-list-row"><span>AI forecast</span><b>{'₹{:,.2f}'.format(latest_predicted) if latest_predicted is not None else '—'}</b></div>
-        <div class="ai-list-row"><span>Volatility</span><b>{volatility:.1f}%</b></div>
-        <div class="ai-list-row"><span>News sentiment</span><b>{summary.get('overall_sentiment','Neutral')}</b></div>
-        <div class="ai-why"><b>Research view</b><br>{signal_reason}</div>
-        <a class="ai-cta" href="#ai-signal">View AI recommendations</a>
-      </div>
-    </div>
-    </div>
-    """, unsafe_allow_html=True)
+
+
+# ============================================================
+# STICKY AI RECOMMENDATION — FIXED TO VIEWPORT
+# Kept visually identical; rendered as one HTML block so CSS fixed
+# positioning is not broken by nested Streamlit elements.
+# ============================================================
+_risk_angle = -65 + min(max(risk_position, 0), 100) * 1.3
+_sticky_risk_html = f"""
+<div class="risk-box">
+  <div class="risk-gauge">
+    <div class="risk-needle" style="transform:rotate({_risk_angle:.1f}deg)"></div>
+    <div class="risk-dot"></div>
+  </div>
+  <div class="risk-scale"><span>LOW</span><span>MODERATE</span><span>HIGH</span></div>
+  <div class="risk-label">{risk_label.upper()} RISK</div>
+</div>
+"""
+
+st.markdown(f"""<div class="sticky-panel">
+<div class="ai-panel">
+<div class="ai-panel-head">
+<div class="mm-eyebrow">MarketMind recommendation</div>
+<div class="ai-panel-title">{selected_stock}</div>
+<div class="ai-panel-sub">Live research summary for the selected company.</div>
+</div>
+<div class="ai-signal">
+<div class="ai-signal-label">AI Signal</div>
+<div class="ai-signal-value">{signal}</div>
+<div class="ai-score">AI Research Score · {ai_score}/100</div>
+</div>
+{_sticky_risk_html}
+<div class="ai-list">
+<div class="ai-list-row"><span>Current price</span><b>₹{current:,.2f}</b></div>
+<div class="ai-list-row"><span>AI forecast</span><b>{'₹{:,.2f}'.format(latest_predicted) if latest_predicted is not None else '—'}</b></div>
+<div class="ai-list-row"><span>Volatility</span><b>{volatility:.1f}%</b></div>
+<div class="ai-list-row"><span>News sentiment</span><b>{summary.get('overall_sentiment','Neutral')}</b></div>
+<div class="ai-why"><b>Research view</b><br>{signal_reason}</div>
+<a class="ai-cta" href="#ai-signal">View AI recommendations</a>
+</div>
+</div>
+</div>""", unsafe_allow_html=True)
 
 # ============================================================
 # BOTTOM COMPANY DIRECTORY — NAMES ALSO VISIBLE ON HOME PAGE
