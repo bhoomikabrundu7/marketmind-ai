@@ -1,12 +1,45 @@
+# Python
 __pycache__/
 *.py[cod]
-.venv/
+*.pyo
+
+# Virtual environment
 venv/
+.venv/
+env/
+
+# Environment variables / secrets
 .env
-.streamlit/secrets.toml
-models/*.pkl
-models/*.h5
-data/raw/*.csv
-data/processed/*.csv
-!data/raw/.gitkeep
-!data/processed/.gitkeep
+.env.*
+!.env.example
+
+# Node
+node_modules/
+.next/
+out/
+dist/
+
+# Python tools
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Model/cache files
+*.pkl
+*.joblib
+*.h5
+
+# Temporary files
+*.tmp
+*.temp
