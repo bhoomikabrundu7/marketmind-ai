@@ -13,7 +13,10 @@ export default function ExplainabilityCard({ items }: ExplainabilityCardProps) {
     return null;
   }
 
-  const maxImpact = Math.max(...items.map((i) => Math.abs(i.impact)), 0.0001);
+  const maxImpact = Math.max(
+    ...items.map((i) => Math.abs(Number(i.impact) || 0)),
+    0.0001
+  );
 
   return (
     <div className="bento-card">
@@ -35,7 +38,8 @@ export default function ExplainabilityCard({ items }: ExplainabilityCardProps) {
 
       <div className="space-y-3">
         {items.map((item, idx) => {
-          const pct = Math.min((Math.abs(item.impact) / maxImpact) * 100, 100);
+          const numImpact = Number(item.impact) || 0;
+          const pct = Math.min((Math.abs(numImpact) / maxImpact) * 100, 100);
           const isPos = item.direction === "Positive";
 
           return (
@@ -50,7 +54,7 @@ export default function ExplainabilityCard({ items }: ExplainabilityCardProps) {
                   {item.feature}
                 </span>
                 <span className={isPos ? "text-[#00d084]" : "text-[#ff5366]"}>
-                  {item.impact > 0 ? `+${item.impact}` : item.impact}
+                  {numImpact > 0 ? `+${numImpact}` : numImpact}
                 </span>
               </div>
               <div className="w-full h-1.5 bg-[#0d1117] rounded-full overflow-hidden border border-[#2d333b]">

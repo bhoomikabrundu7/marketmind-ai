@@ -116,16 +116,24 @@ export default function CompaniesPage() {
   });
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-black text-white tracking-tight">Company Directory & Market Coverage</h1>
-        <p className="text-xs text-[#8b90a3] mt-1">
-          Explore covered equities across global and domestic exchanges with real-time AI signals
-        </p>
+    <div className="min-h-screen bg-[#070a0f] text-white p-6 space-y-6">
+      {/* Page Header */}
+      <div className="bg-[#0f1522] border border-[#1b2230] p-6 rounded-3xl flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-xl">
+        <div>
+          <span className="text-[10px] font-black uppercase tracking-widest text-[#00e699] bg-[#00e699]/10 px-2.5 py-1 rounded-md border border-[#00e699]/30">
+            Market Coverage
+          </span>
+          <h1 className="text-2xl font-black text-white tracking-tight mt-2">
+            Company Directory & Ticker Hub
+          </h1>
+          <p className="text-xs text-[#8b90a3] mt-1">
+            Explore covered equities across global and domestic exchanges with real-time AI decision signals
+          </p>
+        </div>
       </div>
 
-      {/* Filter and Search Bar */}
-      <div className="bento-card flex flex-col sm:flex-row items-center justify-between gap-4">
+      {/* Filter and Search Bar Container */}
+      <div className="bg-[#0f1522] border border-[#1b2230] p-4 rounded-2xl flex flex-col sm:flex-row items-center justify-between gap-4 shadow-md">
         {/* Search Input */}
         <div className="relative w-full sm:w-96">
           <input
@@ -133,32 +141,38 @@ export default function CompaniesPage() {
             value={filterQuery}
             onChange={(e) => setFilterQuery(e.target.value)}
             placeholder="Search by company name or ticker (e.g. Tata, Reliance, AAPL)..."
-            className="w-full bg-[#0d1117] border border-[#2d333b] rounded-xl px-4 py-2.5 text-xs text-white placeholder-[#8b90a3] focus:outline-none focus:border-[#0fa3b1]"
+            className="w-full bg-[#070a0f] border border-[#242f45] rounded-xl px-4 py-2.5 text-xs text-white placeholder-[#8b90a3] focus:outline-none focus:border-[#00e699] transition-all"
           />
         </div>
 
-        {/* Exchange Filter Buttons */}
-        <div className="flex items-center gap-2 bg-[#0d1117] p-1 rounded-xl border border-[#2d333b] w-full sm:w-auto justify-center">
+        {/* Exchange Filter Pills */}
+        <div className="flex items-center gap-1.5 bg-[#070a0f] p-1 rounded-xl border border-[#242f45] w-full sm:w-auto justify-center">
           <button
             onClick={() => setExchangeFilter("ALL")}
-            className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-colors ${
-              exchangeFilter === "ALL" ? "bg-[#0fa3b1] text-black" : "text-[#8b90a3] hover:text-white"
+            className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+              exchangeFilter === "ALL"
+                ? "bg-[#00e699] text-[#070a0f] shadow-md shadow-[#00e699]/20 font-black"
+                : "text-[#8b90a3] hover:text-white"
             }`}
           >
             All Markets
           </button>
           <button
             onClick={() => setExchangeFilter("NSE")}
-            className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-colors ${
-              exchangeFilter === "NSE" ? "bg-[#0fa3b1] text-black" : "text-[#8b90a3] hover:text-white"
+            className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+              exchangeFilter === "NSE"
+                ? "bg-[#00e699] text-[#070a0f] shadow-md shadow-[#00e699]/20 font-black"
+                : "text-[#8b90a3] hover:text-white"
             }`}
           >
             NSE (India)
           </button>
           <button
             onClick={() => setExchangeFilter("US")}
-            className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-colors ${
-              exchangeFilter === "US" ? "bg-[#0fa3b1] text-black" : "text-[#8b90a3] hover:text-white"
+            className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+              exchangeFilter === "US"
+                ? "bg-[#00e699] text-[#070a0f] shadow-md shadow-[#00e699]/20 font-black"
+                : "text-[#8b90a3] hover:text-white"
             }`}
           >
             US Equities
@@ -166,74 +180,90 @@ export default function CompaniesPage() {
         </div>
       </div>
 
-      {/* Directory Grid */}
+      {/* Directory Grid Display */}
       {loading ? (
-        <div className="h-64 bento-card flex flex-col items-center justify-center gap-3">
-          <div className="w-8 h-8 border-2 border-[#0fa3b1] border-t-transparent rounded-full animate-spin" />
-          <span className="text-xs text-[#8b90a3]">Loading covered equities...</span>
+        <div className="h-64 bg-[#0f1522] border border-[#1b2230] rounded-3xl flex flex-col items-center justify-center gap-3">
+          <div className="w-8 h-8 border-2 border-[#00e699] border-t-transparent rounded-full animate-spin" />
+          <span className="text-xs font-semibold text-[#8b90a3]">Loading covered equities...</span>
         </div>
       ) : filteredCompanies.length === 0 ? (
-        <div className="bento-card py-16 text-center text-xs text-[#8b90a3]">
+        <div className="bg-[#0f1522] border border-[#1b2230] rounded-3xl py-16 text-center text-xs text-[#8b90a3]">
           No companies found matching your query.
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {filteredCompanies.map((comp) => {
             const isSaved = watchlistSymbols.includes(comp.symbol);
+            const isPositive = (comp.changePct ?? 0) >= 0;
+
             return (
               <div
                 key={comp.symbol}
-                className="bento-card hover:border-[#0fa3b1]/50 transition-all flex flex-col justify-between space-y-4"
+                className="bg-[#0f1522] border border-[#1b2230] rounded-2xl p-5 hover:border-[#00e699]/50 transition-all shadow-md flex flex-col justify-between space-y-4"
               >
                 <div className="space-y-3">
-                  {/* Top Bar: Name & Exchange Badge */}
+                  {/* Top Header: Company Name & Exchange Tag */}
                   <div className="flex items-start justify-between gap-2">
                     <div>
                       <h3 className="text-sm font-bold text-white block truncate">{comp.name}</h3>
-                      <span className="text-xs font-mono font-bold text-[#06c8d9]">{comp.symbol}</span>
+                      <span className="text-xs font-mono font-bold text-[#00e699]">{comp.symbol}</span>
                     </div>
 
-                    <span className="text-[10px] font-mono text-[#8b90a3] bg-[#0d1117] px-2 py-0.5 rounded border border-[#2d333b] shrink-0">
+                    <span className="text-[10px] font-mono text-[#8b90a3] bg-[#070a0f] px-2 py-0.5 rounded border border-[#242f45] shrink-0">
                       {comp.exchange}
                     </span>
                   </div>
 
-                  {/* Live Market & AI Details */}
+                  {/* Live Market & AI Signal Metrics */}
                   {comp.price !== undefined ? (
-                    <div className="pt-2 border-t border-[#2d333b] flex items-center justify-between">
+                    <div className="pt-2 border-t border-[#1b2230] flex items-center justify-between">
                       <div>
                         <span className="text-[10px] text-[#8b90a3] uppercase font-bold block">Live Price</span>
-                        <span className="text-base font-black text-white block">
-                          ₹{comp.price.toLocaleString()}
-                        </span>
+                        <div className="flex items-baseline gap-2">
+                          <span className="text-base font-black text-white block">
+                            ₹{comp.price.toLocaleString()}
+                          </span>
+                          {comp.changePct !== undefined && (
+                            <span
+                              className={`text-[10px] font-bold ${
+                                isPositive ? "text-[#00e699]" : "text-[#ff5366]"
+                              }`}
+                            >
+                              {isPositive ? "+" : ""}
+                              {comp.changePct}%
+                            </span>
+                          )}
+                        </div>
                       </div>
 
                       {comp.signal && (
-                        <span className="text-[10px] font-bold text-[#06c8d9] bg-[#0fa3b1]/10 px-2 py-1 rounded">
+                        <span className="text-[10px] font-extrabold text-[#00e699] bg-[#00e699]/10 border border-[#00e699]/30 px-2.5 py-1 rounded-full">
                           {comp.signal}
                         </span>
                       )}
                     </div>
                   ) : (
-                    <div className="pt-2 text-[10px] text-[#8b90a3]">Fetching price analytics...</div>
+                    <div className="pt-2 border-t border-[#1b2230] text-[10px] text-[#8b90a3]">
+                      Fetching real-time market feeds...
+                    </div>
                   )}
                 </div>
 
-                {/* Bottom Actions */}
-                <div className="flex items-center gap-2 pt-3 border-t border-[#2d333b]/60">
+                {/* Bottom Action Controls */}
+                <div className="flex items-center gap-2 pt-3 border-t border-[#1b2230]">
                   <Link
                     href={`/analysis?symbol=${encodeURIComponent(comp.symbol)}`}
-                    className="w-full text-center bg-[#0d1117] hover:bg-[#2d333b] border border-[#2d333b] text-white font-bold text-xs py-2 rounded-xl transition-colors"
+                    className="w-full text-center bg-[#070a0f] hover:bg-[#121824] border border-[#242f45] text-white font-bold text-xs py-2 rounded-xl transition-colors"
                   >
-                    Launch View →
+                    Launch Terminal →
                   </Link>
 
                   <button
                     onClick={() => handleToggleWatchlist(comp.symbol, comp.name)}
-                    className={`px-3 py-2 rounded-xl text-xs font-bold transition-colors ${
+                    className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
                       isSaved
-                        ? "bg-[#00d084]/20 text-[#00d084] border border-[#00d084]"
-                        : "bg-[#0fa3b1]/10 text-[#06c8d9] hover:bg-[#0fa3b1]/20 border border-[#0fa3b1]/30"
+                        ? "bg-[#00e699]/20 text-[#00e699] border border-[#00e699]"
+                        : "bg-[#070a0f] text-[#8b90a3] hover:text-white border border-[#242f45]"
                     }`}
                     title={isSaved ? "In Watchlist" : "Add to Watchlist"}
                   >

@@ -1,6 +1,5 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-
 from database.session import engine, Base
 from backend.app.api.endpoints import analysis, companies, simulator, auth, watchlist, portfolio
 from backend.app.core.config import settings
@@ -8,12 +7,13 @@ from backend.app.core.config import settings
 # Initialize all database tables on application startup
 Base.metadata.create_all(bind=engine)
 
+# Initialize FastAPI instance
 app = FastAPI(
     title=settings.PROJECT_NAME,
     openapi_url=f"{settings.API_V1_STR}/openapi.json"
 )
 
-# Explicit CORS configuration (wildcards with allow_credentials=True can trigger browser blocks)
+# Explicit CORS configuration
 origins = [
     "http://localhost:3000",
     "http://127.0.0.1:3000",
