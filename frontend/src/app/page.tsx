@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, Suspense } from "react";
+import { useState, useEffect, Suspense, useMemo } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { fetchStockAnalysis } from "@/lib/api";
@@ -39,17 +39,45 @@ interface TopAsset {
   pct: string;
 }
 
-const TOP_ASSETS_DATA: TopAsset[] = [
-  { rank: 1, asset: "NVIDIA Corp. (NVDA)", sector: "Semiconductors", volume: "$ 45.2 B", trend: "up", pct: "+4.2%" },
-  { rank: 2, asset: "Reliance Ind. (RELIANCE.NS)", sector: "Conglomerate", volume: "$ 12.4 B", trend: "up", pct: "+2.1%" },
-  { rank: 3, asset: "Apple Inc. (AAPL)", sector: "Consumer Tech", volume: "$ 38.1 B", trend: "down", pct: "-1.1%" },
-  { rank: 4, asset: "Tata Consultancy (TCS.NS)", sector: "Information Tech", volume: "$ 8.7 B", trend: "up", pct: "+1.5%" },
-  { rank: 5, asset: "Tesla Inc. (TSLA)", sector: "Automotive", volume: "$ 28.5 B", trend: "down", pct: "-3.4%" },
-];
+const REGION_ASSETS: Record<string, TopAsset[]> = {
+  "Global Markets": [
+    { rank: 1, asset: "NVIDIA Corp. (NVDA)", sector: "Semiconductors", volume: "$ 45.2 B", trend: "up", pct: "+4.2%" },
+    { rank: 2, asset: "Reliance Ind. (RELIANCE.NS)", sector: "Conglomerate", volume: "$ 12.4 B", trend: "up", pct: "+2.1%" },
+    { rank: 3, asset: "Apple Inc. (AAPL)", sector: "Consumer Tech", volume: "$ 38.1 B", trend: "down", pct: "-1.1%" },
+    { rank: 4, asset: "Tata Consultancy (TCS.NS)", sector: "Information Tech", volume: "$ 8.7 B", trend: "up", pct: "+1.5%" },
+    { rank: 5, asset: "Tesla Inc. (TSLA)", sector: "Automotive", volume: "$ 28.5 B", trend: "down", pct: "-3.4%" },
+  ],
+  "North America": [
+    { rank: 1, asset: "NVIDIA Corp. (NVDA)", sector: "Semiconductors", volume: "$ 45.2 B", trend: "up", pct: "+4.2%" },
+    { rank: 2, asset: "Apple Inc. (AAPL)", sector: "Consumer Tech", volume: "$ 38.1 B", trend: "down", pct: "-1.1%" },
+    { rank: 3, asset: "Microsoft Corp. (MSFT)", sector: "Software", volume: "$ 34.6 B", trend: "up", pct: "+2.8%" },
+    { rank: 4, asset: "Amazon.com (AMZN)", sector: "E-Commerce", volume: "$ 31.2 B", trend: "up", pct: "+1.9%" },
+    { rank: 5, asset: "Tesla Inc. (TSLA)", sector: "Automotive", volume: "$ 28.5 B", trend: "down", pct: "-3.4%" },
+  ],
+  "APAC": [
+    { rank: 1, asset: "Reliance Ind. (RELIANCE.NS)", sector: "Conglomerate", volume: "$ 12.4 B", trend: "up", pct: "+2.1%" },
+    { rank: 2, asset: "TSMC (2330.TW)", sector: "Semiconductors", volume: "$ 22.1 B", trend: "up", pct: "+3.6%" },
+    { rank: 3, asset: "Tata Consultancy (TCS.NS)", sector: "Information Tech", volume: "$ 8.7 B", trend: "up", pct: "+1.5%" },
+    { rank: 4, asset: "Toyota Motor (7203.T)", sector: "Automotive", volume: "$ 9.4 B", trend: "down", pct: "-0.8%" },
+    { rank: 5, asset: "Samsung Electronics (005930.KS)", sector: "Electronics", volume: "$ 14.2 B", trend: "up", pct: "+2.4%" },
+  ],
+  "EMEA": [
+    { rank: 1, asset: "ASML Holding (ASML.AS)", sector: "Semiconductors", volume: "$ 11.8 B", trend: "up", pct: "+2.9%" },
+    { rank: 2, asset: "LVMH Moët Hennessy (MC.PA)", sector: "Luxury Goods", volume: "$ 9.1 B", trend: "down", pct: "-1.4%" },
+    { rank: 3, asset: "SAP SE (SAP.DE)", sector: "Software", volume: "$ 7.5 B", trend: "up", pct: "+1.8%" },
+    { rank: 4, asset: "AstraZeneca (AZN.L)", sector: "Pharmaceuticals", volume: "$ 6.3 B", trend: "up", pct: "+0.9%" },
+    { rank: 5, asset: "Shell plc (SHEL.L)", sector: "Energy", volume: "$ 8.2 B", trend: "down", pct: "-2.1%" },
+  ],
+};
 
-function generateAnimatedLineChart(history: any[]): string {
+function generateAnimatedLineChart(history: any[], multiplier: number = 1): string {
   if (!history || history.length < 2) {
-    return "M 0 80 L 50 60 L 100 70 L 150 40 L 200 55 L 250 20 L 300 35 L 350 10 L 400 25";
+    const defaultPoints = [80, 60, 70, 40, 55, 20, 35, 10, 25].map((p, i) => {
+      const x = (i / 8) * 450;
+      const y = Math.max(10, Math.min(80, p * multiplier));
+      return `${x.toFixed(1)},${y.toFixed(1)}`;
+    });
+    return `M ${defaultPoints.join(" L ")}`;
   }
   const prices = history.map((h) => Number(h.close || h.price || 0));
   const minPrice = Math.min(...prices);
@@ -88,6 +116,16 @@ function AuthenticatedDashboardContent() {
     priceHistory: [] as any[],
   });
 
+  // Live micro-tick offset state for continuous realistic candlestick animation
+  const [liveTickOffset, setLiveTickOffset] = useState<number>(0);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setLiveTickOffset((prev) => (Math.random() - 0.48) * 3);
+    }, 1200);
+    return () => clearInterval(interval);
+  }, []);
+
   useEffect(() => {
     const loadStock = async () => {
       try {
@@ -110,22 +148,88 @@ function AuthenticatedDashboardContent() {
     loadStock();
   }, [selectedTicker]);
 
-  const lineChartPath = generateAnimatedLineChart(stockData.priceHistory);
+  // Dynamic filter multiplier to recalculate metrics based on selected filters
+  const filterMultiplier = useMemo(() => {
+    let mult = 1.0;
+    if (timeframe === "Q3 2026") mult *= 0.88;
+    if (timeframe === "1Y Trailing") mult *= 1.15;
+    if (regionFilter === "North America") mult *= 1.25;
+    if (regionFilter === "APAC") mult *= 0.75;
+    if (regionFilter === "EMEA") mult *= 0.65;
+    if (assetClass === "Derivatives") mult *= 1.4;
+    if (assetClass === "Forex") mult *= 0.9;
+    if (assetClass === "Commodities") mult *= 0.8;
+    return mult;
+  }, [timeframe, regionFilter, assetClass]);
+
+  const topAssets = useMemo(() => {
+    return REGION_ASSETS[regionFilter] || REGION_ASSETS["Global Markets"];
+  }, [regionFilter]);
+
+  const lineChartPath = useMemo(() => {
+    return generateAnimatedLineChart(stockData.priceHistory, filterMultiplier);
+  }, [stockData.priceHistory, filterMultiplier]);
+
+  // REALISTIC CONTINUOUS FINANCIAL CANDLESTICK DATA CALCULATOR
+  const realisticCandleData = useMemo(() => {
+    const rawPattern = [
+      { open: 1240, close: 1248, high: 1252, low: 1236, volume: 65 },
+      { open: 1248, close: 1243, high: 1250, low: 1240, volume: 45 },
+      { open: 1243, close: 1255, high: 1258, low: 1241, volume: 85 },
+      { open: 1255, close: 1251, high: 1257, low: 1246, volume: 50 },
+      { open: 1251, close: 1264, high: 1268, low: 1249, volume: 92 },
+      { open: 1264, close: 1260, high: 1266, low: 1255, volume: 40 },
+      { open: 1260, close: 1254, high: 1262, low: 1250, volume: 60 },
+      { open: 1254, close: 1262, high: 1265, low: 1252, volume: 75 },
+      { open: 1262, close: 1269, high: 1274, low: 1260, volume: 98 },
+      { open: 1269, close: 1263, high: 1271, low: 1258, volume: 55 },
+      { open: 1263, close: 1275, high: 1278, low: 1261, volume: 110 },
+      { open: 1275, close: 1271, high: 1277, low: 1267, volume: 48 },
+      { open: 1271, close: 1282, high: 1286, low: 1269, volume: 120 },
+      { open: 1282, close: 1278 + liveTickOffset, high: Math.max(1286, 1278 + liveTickOffset + 2), low: 1274, volume: 80 },
+    ];
+
+    const adjusted = rawPattern.map((c) => ({
+      open: c.open * filterMultiplier,
+      close: c.close * filterMultiplier,
+      high: c.high * filterMultiplier,
+      low: c.low * filterMultiplier,
+      volume: c.volume,
+    }));
+
+    const allPrices = adjusted.flatMap((c) => [c.high, c.low]);
+    const minP = Math.min(...allPrices);
+    const maxP = Math.max(...allPrices);
+    const pRange = maxP - minP || 1;
+
+    const svgH = 120;
+    const padding = 12;
+
+    const scaleY = (val: number) => {
+      return svgH - padding - ((val - minP) / pRange) * (svgH - 2 * padding);
+    };
+
+    return {
+      candles: adjusted.map((c) => ({
+        openY: scaleY(c.open),
+        closeY: scaleY(c.close),
+        highY: scaleY(c.high),
+        lowY: scaleY(c.low),
+        isGreen: c.close >= c.open,
+        volume: c.volume,
+      })),
+      latestY: scaleY(adjusted[adjusted.length - 1].close),
+    };
+  }, [filterMultiplier, liveTickOffset]);
 
   return (
     <div className="bg-[#0b0f19] text-white min-h-screen p-3 sm:p-5 font-sans selection:bg-[#ffcc00] selection:text-black">
       
-      {/* BRAND & GLOBAL FILTERS HEADER */}
+      {/* GLOBAL FILTERS HEADER */}
       <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between pb-4 border-b border-neutral-800 gap-3">
-        <div className="flex items-center gap-3">
-          <div className="bg-[#ffcc00] text-black font-black px-3 py-1.5 rounded-lg text-lg tracking-tight shadow-md flex items-center gap-2">
-            <Zap className="w-6 h-6 fill-black stroke-black" />
-            <span>MarketMind</span>
-          </div>
-          <div>
-            <h1 className="text-xl font-black tracking-tight text-white leading-tight">Global Macro Dashboard</h1>
-            <p className="text-[11px] text-neutral-400 font-medium leading-normal">Market Capitalization, Volume, and Global Investment Flow</p>
-          </div>
+        <div>
+          <h1 className="text-xl sm:text-2xl font-black tracking-tight text-white leading-tight">Global Macro Dashboard</h1>
+          <p className="text-[11px] text-neutral-400 font-medium leading-normal">Market Capitalization, Volume, and Global Investment Flow</p>
         </div>
 
         {/* INTERACTIVE HEADER FILTER CONTROLS */}
@@ -185,10 +289,10 @@ function AuthenticatedDashboardContent() {
             <DollarSign className="w-5 h-5 text-[#ffcc00]" />
           </div>
           <div className="text-xl sm:text-2xl font-black text-white font-mono my-2">
-            $ 115.4 T
+            $ {(115.4 * filterMultiplier).toFixed(1)} T
           </div>
           <div className="text-[10px] text-emerald-400 font-bold flex items-center gap-1 mt-auto">
-            <span>↑ 2.4%</span> vs Last Month
+            <span>↑ {(2.4 * filterMultiplier).toFixed(1)}%</span> vs Last Month
           </div>
         </div>
 
@@ -198,10 +302,10 @@ function AuthenticatedDashboardContent() {
             <BarChart3 className="w-5 h-5 text-amber-500" />
           </div>
           <div className="text-xl sm:text-2xl font-black text-white font-mono my-2">
-            $ 845.2 B
+            $ {(845.2 * filterMultiplier).toFixed(1)} B
           </div>
           <div className="text-[10px] text-emerald-400 font-bold flex items-center gap-1 mt-auto">
-            <span>↑ 5.2%</span> vs Last Week
+            <span>↑ {(5.2 * filterMultiplier).toFixed(1)}%</span> vs Last Week
           </div>
         </div>
 
@@ -211,10 +315,10 @@ function AuthenticatedDashboardContent() {
             <Users className="w-5 h-5 text-blue-500" />
           </div>
           <div className="text-xl sm:text-2xl font-black text-white font-mono my-2">
-            1,245.8 M
+            {(1245.8 * filterMultiplier).toFixed(1)} M
           </div>
           <div className="text-[10px] text-emerald-400 font-bold flex items-center gap-1 mt-auto">
-            <span>↑ 1.1%</span> vs Last Month
+            <span>↑ {(1.1 * filterMultiplier).toFixed(1)}%</span> vs Last Month
           </div>
         </div>
 
@@ -224,10 +328,10 @@ function AuthenticatedDashboardContent() {
             <TrendingDown className="w-5 h-5 text-purple-500" />
           </div>
           <div className="text-xl sm:text-2xl font-black text-white font-mono my-2">
-            14.2 <span className="text-xs text-neutral-400 font-normal">(Low)</span>
+            {(14.2 / filterMultiplier).toFixed(1)} <span className="text-xs text-neutral-400 font-normal">(Low)</span>
           </div>
           <div className="text-[10px] text-emerald-400 font-bold flex items-center gap-1 mt-auto">
-            <span>↓ 5.4%</span> vs Last Week
+            <span>↓ {(5.4 * filterMultiplier).toFixed(1)}%</span> vs Last Week
           </div>
         </div>
 
@@ -237,7 +341,7 @@ function AuthenticatedDashboardContent() {
             <Rocket className="w-5 h-5 text-emerald-500" />
           </div>
           <div className="text-xl sm:text-2xl font-black text-white font-mono my-2">
-            + 6.7%
+            + {(6.7 * filterMultiplier).toFixed(1)}%
           </div>
           <div className="text-[10px] text-emerald-400 font-bold flex items-center gap-1 mt-auto">
             <span>↑ 1.2%</span> vs Sector Avg
@@ -250,7 +354,7 @@ function AuthenticatedDashboardContent() {
             <AlertTriangle className="w-5 h-5 text-red-500" />
           </div>
           <div className="text-xl sm:text-2xl font-black text-white font-mono my-2">
-            - 4.2%
+            - {(4.2 * filterMultiplier).toFixed(1)}%
           </div>
           <div className="text-[10px] text-red-400 font-bold flex items-center gap-1 mt-auto">
             <span>↓ 0.8%</span> vs Sector Avg
@@ -267,10 +371,10 @@ function AuthenticatedDashboardContent() {
           <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-neutral-800 pb-2.5 mb-2 gap-1">
             <span className="text-xs font-black uppercase tracking-wider text-white flex items-center gap-2">
               <LineChart className="w-5 h-5 text-[#ffcc00]" />
-              <span>Global Index Performance</span>
+              <span>Global Index Performance ({regionFilter})</span>
             </span>
             <span className="text-[11px] text-neutral-400 font-mono">
-              All-Time High: <strong className="text-emerald-400">$ 117.2 T</strong> on 14 Aug 2026
+              Selected Ticker: <strong className="text-emerald-400">${livePrice.toFixed(2)}</strong> ({stockData.symbol})
             </span>
           </div>
 
@@ -311,7 +415,7 @@ function AuthenticatedDashboardContent() {
               </svg>
               <div className="absolute text-center flex flex-col items-center justify-center">
                 <span className="text-[9px] text-neutral-400 uppercase font-bold leading-none">Total</span>
-                <span className="text-xs font-black text-white font-mono mt-0.5">$115.4T</span>
+                <span className="text-xs font-black text-white font-mono mt-0.5">${(115.4 * filterMultiplier).toFixed(1)}T</span>
               </div>
             </div>
 
@@ -335,11 +439,11 @@ function AuthenticatedDashboardContent() {
 
           <div className="space-y-2.5 text-[11px] font-mono flex-1 flex flex-col justify-center py-1">
             {[
-              { country: "United States", val: "$ 52.4 T", w: "100%" },
-              { country: "China", val: "$ 12.1 T", w: "35%" },
-              { country: "Japan", val: "$ 6.2 T", w: "18%" },
-              { country: "India", val: "$ 4.8 T", w: "14%" },
-              { country: "United Kingdom", val: "$ 3.2 T", w: "9%" },
+              { country: "United States", val: `$ ${(52.4 * filterMultiplier).toFixed(1)} T`, w: "100%" },
+              { country: "China", val: `$ ${(12.1 * filterMultiplier).toFixed(1)} T`, w: "35%" },
+              { country: "Japan", val: `$ ${(6.2 * filterMultiplier).toFixed(1)} T`, w: "18%" },
+              { country: "India", val: `$ ${(4.8 * filterMultiplier).toFixed(1)} T`, w: "14%" },
+              { country: "United Kingdom", val: `$ ${(3.2 * filterMultiplier).toFixed(1)} T`, w: "9%" },
             ].map((c, i) => (
               <div key={i} className="space-y-1">
                 <div className="flex justify-between text-neutral-300 text-[10px] items-center">
@@ -359,48 +463,123 @@ function AuthenticatedDashboardContent() {
       {/* LOWER SECTION GRID */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 mt-4">
         
-        {/* GLOBAL TRADING HEATMAP */}
+        {/* ULTRA-REALISTIC & ANIMATED GLOBAL MARKET CANDLESTICK CHART */}
         <div className="lg:col-span-4 bg-[#121826] border border-neutral-800 rounded-xl p-4 flex flex-col justify-between h-full shadow-lg">
-          <div className="border-b border-neutral-800 pb-2.5 mb-2">
+          <div className="flex items-center justify-between border-b border-neutral-800 pb-2.5 mb-2">
             <span className="text-xs font-black uppercase tracking-wider text-white flex items-center gap-2">
-              <Activity className="w-5 h-5 text-[#ffcc00]" />
-              <span>Global Trading Heatmap</span>
+              <CandlestickChart className="w-5 h-5 text-[#ffcc00]" />
+              <span>Global Market Candlesticks</span>
             </span>
-          </div>
-
-          <div className="space-y-2.5 text-[10px] font-mono py-1 flex-1 flex flex-col justify-center">
-            <div className="grid grid-cols-8 gap-1.5 text-neutral-400 font-bold text-center items-center">
-              <span>Region</span><span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span className="opacity-30">Sat</span><span className="opacity-30">Sun</span>
+            <div className="flex items-center gap-1.5">
+              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
+              <span className="text-[10px] font-mono text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded font-bold">
+                LIVE
+              </span>
             </div>
-            {[
-              { region: "NY (US)", opacity: ["opacity-90", "opacity-100", "opacity-100", "opacity-80", "opacity-90", "opacity-10", "opacity-10"] },
-              { region: "LND (EU)", opacity: ["opacity-70", "opacity-80", "opacity-90", "opacity-80", "opacity-70", "opacity-10", "opacity-10"] },
-              { region: "TKY (APAC)", opacity: ["opacity-60", "opacity-70", "opacity-70", "opacity-60", "opacity-80", "opacity-10", "opacity-10"] },
-              { region: "BOM (IN)", opacity: ["opacity-80", "opacity-90", "opacity-80", "opacity-100", "opacity-90", "opacity-10", "opacity-10"] },
-            ].map((slot, idx) => (
-              <div key={idx} className="grid grid-cols-8 gap-1.5 items-center">
-                <span className="text-[9px] text-neutral-400 font-bold truncate">{slot.region}</span>
-                {slot.opacity.map((op, oIdx) => (
-                  <div key={oIdx} className={`h-5 bg-[#ffcc00] rounded ${op}`} />
-                ))}
-              </div>
-            ))}
           </div>
 
-          <div className="flex justify-between items-center text-[10px] text-neutral-400 pt-2 border-t border-neutral-800/60 mt-1">
-            <span>Low Vol</span>
-            <div className="w-24 h-1.5 bg-gradient-to-r from-neutral-800 via-amber-500 to-[#ffcc00] rounded" />
-            <span>High Vol</span>
+          <div className="h-44 w-full bg-[#0b0f19] rounded-lg p-2.5 border border-neutral-800 flex flex-col justify-between flex-1 my-1 relative overflow-hidden">
+            <svg className="w-full h-36 overflow-visible" viewBox="0 0 350 120" preserveAspectRatio="none">
+              <defs>
+                <linearGradient id="bullishGrad" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="#22c55e" stopOpacity="0.9" />
+                  <stop offset="100%" stopColor="#15803d" stopOpacity="0.9" />
+                </linearGradient>
+                <linearGradient id="bearishGrad" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="#ef4444" stopOpacity="0.9" />
+                  <stop offset="100%" stopColor="#b91c1c" stopOpacity="0.9" />
+                </linearGradient>
+              </defs>
+
+              {/* Price Gridlines */}
+              <line x1="0" y1="30" x2="350" y2="30" stroke="#1f293d" strokeWidth="1" strokeDasharray="3 3" />
+              <line x1="0" y1="60" x2="350" y2="60" stroke="#1f293d" strokeWidth="1" strokeDasharray="3 3" />
+              <line x1="0" y1="90" x2="350" y2="90" stroke="#1f293d" strokeWidth="1" strokeDasharray="3 3" />
+
+              {/* Dynamic Live Price Line extending from the last candle */}
+              <line
+                x1="0"
+                y1={realisticCandleData.latestY}
+                x2="350"
+                y2={realisticCandleData.latestY}
+                stroke="#00e699"
+                strokeWidth="1.2"
+                strokeDasharray="4 4"
+                className="transition-all duration-500 opacity-75"
+              />
+
+              {/* Continuous Candlesticks & Volume Histogram Overlay */}
+              {realisticCandleData.candles.map((cd, i) => {
+                const x = 14 + i * 23.5;
+                const strokeColor = cd.isGreen ? "#22c55e" : "#ef4444";
+                const bodyFill = cd.isGreen ? "url(#bullishGrad)" : "url(#bearishGrad)";
+                const bodyTop = Math.min(cd.openY, cd.closeY);
+                const bodyHeight = Math.max(Math.abs(cd.closeY - cd.openY), 3);
+                const volHeight = (cd.volume / 120) * 22;
+
+                return (
+                  <g key={i} className="transition-all duration-500">
+                    {/* Volume Histogram Bar at bottom */}
+                    <rect
+                      x={x - 6}
+                      y={120 - volHeight}
+                      width="12"
+                      height={volHeight}
+                      fill={strokeColor}
+                      opacity="0.2"
+                    />
+                    {/* Wick Line */}
+                    <line
+                      x1={x}
+                      y1={cd.highY}
+                      x2={x}
+                      y2={cd.lowY}
+                      stroke={strokeColor}
+                      strokeWidth="1.5"
+                      strokeLinecap="round"
+                    />
+                    {/* Candle Body */}
+                    <rect
+                      x={x - 6}
+                      y={bodyTop}
+                      width="12"
+                      height={bodyHeight}
+                      fill={bodyFill}
+                      stroke={strokeColor}
+                      strokeWidth="1"
+                      rx="1"
+                    />
+                  </g>
+                );
+              })}
+
+              {/* Live Price Tag Marker */}
+              <g transform={`translate(290, ${realisticCandleData.latestY - 8})`}>
+                <rect x="0" y="0" width="58" height="16" rx="4" fill="#00e699" />
+                <text x="29" y="11" fill="#070a0f" fontSize="9" fontWeight="900" fontFamily="monospace" textAnchor="middle">
+                  ${(livePrice).toFixed(1)}
+                </text>
+              </g>
+            </svg>
+            <div className="flex justify-between text-[9px] text-neutral-400 font-mono border-t border-neutral-800/80 pt-1.5">
+              <span>09:30</span><span>11:00</span><span>12:30</span><span>14:00</span><span>15:30</span><span>16:00</span>
+            </div>
+          </div>
+
+          <div className="flex justify-between items-center text-[10px] text-neutral-400 pt-1 border-t border-neutral-800/60 mt-1">
+            <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-emerald-500 inline-block"/> Bullish Momentum</span>
+            <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-red-500 inline-block"/> Bearish Correction</span>
           </div>
         </div>
 
         {/* TOP 5 GLOBAL EQUITIES BY VOLUME */}
         <div className="lg:col-span-5 bg-[#121826] border border-neutral-800 rounded-xl p-4 flex flex-col justify-between h-full shadow-lg">
-          <div className="border-b border-neutral-800 pb-2.5 mb-2">
+          <div className="border-b border-neutral-800 pb-2.5 mb-2 flex items-center justify-between">
             <span className="text-xs font-black uppercase tracking-wider text-white flex items-center gap-2">
               <Trophy className="w-5 h-5 text-[#ffcc00]" />
-              <span>Top 5 Global Equities by Volume</span>
+              <span>Top 5 Equities ({regionFilter})</span>
             </span>
+            <span className="text-[10px] font-mono text-neutral-400">{assetClass}</span>
           </div>
 
           <div className="space-y-1.5 text-xs flex-1 my-1">
@@ -409,7 +588,7 @@ function AuthenticatedDashboardContent() {
               <span className="col-span-4">Sector</span>
               <span className="col-span-3 text-right">Volume</span>
             </div>
-            {TOP_ASSETS_DATA.map((p) => {
+            {topAssets.map((p) => {
               const tickerExtracted = p.asset.split("(")[1].replace(")", "");
               return (
                 <div
@@ -438,7 +617,7 @@ function AuthenticatedDashboardContent() {
           </button>
         </div>
 
-        {/* PERFECTLY FITTED & PROPORTIONED INVESTOR DEMOGRAPHICS */}
+        {/* INVESTOR DEMOGRAPHICS */}
         <div className="lg:col-span-3 bg-[#121826] border border-neutral-800 rounded-xl p-4 flex flex-col justify-between h-full shadow-lg">
           <div className="border-b border-neutral-800 pb-2.5 mb-2">
             <span className="text-xs font-black uppercase tracking-wider text-white flex items-center gap-2">
@@ -484,7 +663,7 @@ function AuthenticatedDashboardContent() {
           <span className="p-1.5 bg-[#ffcc00]/20 text-[#ffcc00] rounded-lg">
             <Lightbulb className="w-5 h-5 text-[#ffcc00]" />
           </span>
-          <span><strong>Key Insights:</strong> Technology sector drove 45% of global market gains this quarter. Indian markets showing highest YoY institutional inflow.</span>
+          <span><strong>Key Insights:</strong> Technology sector drove 45% of global market gains this quarter. Indian & APAC markets showing highest YoY institutional inflow.</span>
         </div>
         <div className="flex items-center gap-4 text-[11px] font-mono shrink-0">
           <span className="flex items-center gap-1.5"><Monitor className="w-4 h-4 text-neutral-400" /> Tech leads Sector</span>

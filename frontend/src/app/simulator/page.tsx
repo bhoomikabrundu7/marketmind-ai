@@ -1,154 +1,164 @@
 "use client";
 
-import { useState, useEffect, useMemo, useRef } from "react";
-import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recharts";
-import { fetchStockAnalysis, searchCompanies, StockAnalysisResponse, TickerInfo } from "@/lib/api";
+import { useState, useMemo } from "react";
+import { useRouter } from "next/navigation";
+import {
+  TrendingUp,
+  DollarSign,
+  PieChart,
+  BarChart3,
+  Calculator,
+  Building2,
+  ArrowUpRight,
+  Zap,
+  Activity,
+  Layers
+} from "lucide-react";
 
-interface GrowthPoint {
-  year: number;
-  invested: number;
-  expected_value: number;
+interface StockBacktestPreset {
+  symbol: string;
+  name: string;
+  historicalCAGR: number;
+  marketCap: string;
+  category: string;
 }
 
-export default function SimulatorPage() {
-  const [calcType, setCalcType] = useState<"generic" | "company">("generic");
-  const [mode, setMode] = useState<"sip" | "lumpsum">("sip");
-  const [amount, setAmount] = useState<number>(10000);
-  const [years, setYears] = useState<number>(10);
-  const [expectedReturn, setExpectedReturn] = useState<number>(12);
+const STOCK_PRESETS: StockBacktestPreset[] = [
+  { symbol: "NVDA", name: "NVIDIA Corp.", historicalCAGR: 48.5, marketCap: "$3.12 T", category: "Global Tech / AI" },
+  { symbol: "RELIANCE.NS", name: "Reliance Ind.", historicalCAGR: 18.2, marketCap: "₹17.2 T", category: "Domestic Conglomerate" },
+  { symbol: "AAPL", name: "Apple Inc.", historicalCAGR: 24.8, marketCap: "$3.42 T", category: "Consumer Tech" },
+  { symbol: "TCS.NS", name: "Tata Consultancy", historicalCAGR: 15.6, marketCap: "₹15.1 T", category: "IT Services" },
+  { symbol: "MSFT", name: "Microsoft Corp.", historicalCAGR: 26.4, marketCap: "$3.25 T", category: "Cloud & Software" },
+];
 
-  // Company Mode State
-  const [selectedSymbol, setSelectedSymbol] = useState("RELIANCE.NS");
-  const [searchQuery, setSearchQuery] = useState("");
-  const [searchResults, setSearchResults] = useState<TickerInfo[]>([]);
-  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
-  const [stockData, setStockData] = useState<StockAnalysisResponse | null>(null);
-  const [loadingStock, setLoadingStock] = useState(false);
+export default function InvestmentSimulatorPage() {
+  const router = useRouter();
 
-  const dropdownRef = useRef<HTMLDivElement>(null);
+  // Mode Selection
+  const [simulatorMode, setSimulatorMode] = useState<"generic" | "backtest">("generic");
+  const [investmentType, setInvestmentType] = useState<"sip" | "lump">("sip");
 
-  // Fetch stock analysis when company selection changes
-  useEffect(() => {
-    if (calcType !== "company" || !selectedSymbol) return;
-    setLoadingStock(true);
-    fetchStockAnalysis(selectedSymbol)
-      .then((data) => {
-        setStockData(data);
-        const annualReturn = Math.max(5, Math.min(40, Math.abs(data.overview.period_change_pct)));
-        setExpectedReturn(Math.round(annualReturn));
-      })
-      .catch((err) => console.error("Simulator stock fetch error", err))
-      .finally(() => setLoadingStock(false));
-  }, [calcType, selectedSymbol]);
+  // Input States
+  const [monthlyAmount, setMonthlyAmount] = useState<number>(10000);
+  const [lumpSumAmount, setLumpSumAmount] = useState<number>(100000);
+  const [durationYears, setDurationYears] = useState<number>(10);
+  const [expectedReturnRate, setExpectedReturnRate] = useState<number>(12);
+  const [selectedStock, setSelectedStock] = useState<StockBacktestPreset>(STOCK_PRESETS[0]);
 
-  // Live auto-recommendation search as user types starting letters
-  useEffect(() => {
-    if (!searchQuery.trim()) {
-      setSearchResults([]);
-      setIsDropdownOpen(false);
-      return;
-    }
+  // Hover Tooltip State for SVG Chart
+  const [hoveredPoint, setHoveredPoint] = useState<{ year: number; invested: number; value: number; x: number; y: number } | null>(null);
 
-    const timer = setTimeout(async () => {
-      try {
-        const results = await searchCompanies(searchQuery);
-        setSearchResults(results);
-        setIsDropdownOpen(true);
-      } catch (err) {
-        console.error("Search recommendations failed", err);
-      }
-    }, 250);
+  // Determine active rate based on simulator mode
+  const activeRate = simulatorMode === "backtest" ? selectedStock.historicalCAGR : expectedReturnRate;
 
-    return () => clearTimeout(timer);
-  }, [searchQuery]);
+  // COMPOUND MATHEMATICAL TRAJECTORY ENGINE
+  const trajectoryData = useMemo(() => {
+    const points: { year: number; invested: number; totalValue: number; wealthGained: number }[] = [];
+    const r = activeRate / 100;
 
-  // Close recommendations dropdown on outside click
-  useEffect(() => {
-    function handleClickOutside(e: MouseEvent) {
-      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
-        setIsDropdownOpen(false);
-      }
-    }
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
-
-  const handleSelectCompany = (item: TickerInfo) => {
-    setSelectedSymbol(item.symbol);
-    setSearchQuery("");
-    setIsDropdownOpen(false);
-  };
-
-  // Real-time compound return calculation
-  const simulation = useMemo(() => {
-    let totalInvested = 0;
-    let finalBalance = 0;
-    const trajectory: GrowthPoint[] = [];
-    const r = expectedReturn / 100;
-
-    if (mode === "sip") {
+    if (investmentType === "sip") {
+      const p = monthlyAmount;
       const monthlyRate = r / 12;
-      let currentBalance = 0;
 
-      for (let y = 1; y <= years; y++) {
-        for (let m = 1; m <= 12; m++) {
-          currentBalance = (currentBalance + amount) * (1 + monthlyRate);
-        }
-        trajectory.push({
+      for (let y = 1; y <= durationYears; y++) {
+        const n = y * 12;
+        // Accurate Monthly SIP Compound Formula: P * [((1 + i)^n - 1) / i] * (1 + i)
+        const totalValue = p * (((Math.pow(1 + monthlyRate, n) - 1) / monthlyRate) * (1 + monthlyRate));
+        const invested = p * n;
+        const wealthGained = Math.max(0, totalValue - invested);
+
+        points.push({
           year: y,
-          invested: Math.round(amount * 12 * y),
-          expected_value: Math.round(currentBalance),
+          invested: Math.round(invested),
+          totalValue: Math.round(totalValue),
+          wealthGained: Math.round(wealthGained),
         });
       }
-      totalInvested = amount * 12 * years;
-      finalBalance = currentBalance;
     } else {
-      totalInvested = amount;
-      let currentBalance = amount;
+      const p = lumpSumAmount;
+      for (let y = 1; y <= durationYears; y++) {
+        // Accurate Lump Sum Formula: P * (1 + r)^y
+        const totalValue = p * Math.pow(1 + r, y);
+        const invested = p;
+        const wealthGained = Math.max(0, totalValue - invested);
 
-      for (let y = 1; y <= years; y++) {
-        currentBalance = currentBalance * (1 + r);
-        trajectory.push({
+        points.push({
           year: y,
-          invested: amount,
-          expected_value: Math.round(currentBalance),
+          invested: Math.round(invested),
+          totalValue: Math.round(totalValue),
+          wealthGained: Math.round(wealthGained),
         });
       }
-      finalBalance = currentBalance;
     }
 
-    return {
-      totalInvested: Math.round(totalInvested),
-      finalBalance: Math.round(finalBalance),
-      wealthGained: Math.round(finalBalance - totalInvested),
-      trajectory,
-    };
-  }, [mode, amount, years, expectedReturn]);
+    const finalResult = points[points.length - 1] || { invested: 0, totalValue: 0, wealthGained: 0 };
+    return { points, finalResult };
+  }, [investmentType, monthlyAmount, lumpSumAmount, durationYears, activeRate]);
+
+  // SVG CHART PATH CALCULATOR
+  const svgChart = useMemo(() => {
+    const pts = trajectoryData.points;
+    if (!pts.length) return { pathString: "", areaString: "", investedPathString: "", yMax: 1, pointsMapped: [] };
+
+    const svgW = 750;
+    const svgH = 260;
+    const padX = 20;
+    const padY = 25;
+
+    const maxVal = Math.max(...pts.map((d) => d.totalValue)) * 1.05;
+
+    const pointsMapped = pts.map((d, idx) => {
+      const x = padX + (idx / (pts.length - 1 || 1)) * (svgW - 2 * padX);
+      const y = svgH - padY - (d.totalValue / maxVal) * (svgH - 2 * padY);
+      const yInv = svgH - padY - (d.invested / maxVal) * (svgH - 2 * padY);
+      return { x, y, yInv, ...d };
+    });
+
+    const pathString = "M " + pointsMapped.map((p) => `${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(" L ");
+    const investedPathString = "M " + pointsMapped.map((p) => `${p.x.toFixed(1)},${p.yInv.toFixed(1)}`).join(" L ");
+    
+    const firstX = pointsMapped[0].x.toFixed(1);
+    const lastX = pointsMapped[pointsMapped.length - 1].x.toFixed(1);
+    const bottomY = (svgH - padY).toFixed(1);
+
+    const areaString = `${pathString} L ${lastX},${bottomY} L ${firstX},${bottomY} Z`;
+
+    return { pathString, areaString, investedPathString, yMax: maxVal, pointsMapped };
+  }, [trajectoryData]);
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+    <div className="space-y-6 bg-[#070a0f] min-h-screen text-white font-sans selection:bg-[#00e699] selection:text-[#070a0f]">
+      
+      {/* PAGE HEADER BANNER */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-[#1b2230] pb-5">
         <div>
-          <h1 className="text-2xl font-black text-white tracking-tight">Investment Simulator</h1>
-          <p className="text-xs text-[#8b90a3] mt-1">
+          <h1 className="text-3xl font-black tracking-tight text-white flex items-center gap-2.5">
+            <Calculator className="w-7 h-7 text-[#00e699]" />
+            Investment Simulator
+          </h1>
+          <p className="text-xs text-[#8b90a3] mt-1 font-medium">
             Compound wealth growth projection modeler & company stock backtester
           </p>
         </div>
 
-        {/* Mode Switcher */}
-        <div className="flex p-1 bg-[#161b22] border border-[#2d333b] rounded-xl">
+        {/* TOP RIGHT MAIN MODE SWITCHER */}
+        <div className="flex items-center bg-[#0f1522] p-1.5 rounded-2xl border border-[#242f45] text-xs font-mono shrink-0 shadow-lg">
           <button
-            onClick={() => setCalcType("generic")}
-            className={`px-4 py-1.5 text-xs font-bold rounded-lg transition-colors ${
-              calcType === "generic" ? "bg-[#0fa3b1] text-black" : "text-[#8b90a3] hover:text-white"
+            onClick={() => setSimulatorMode("generic")}
+            className={`px-4 py-2 rounded-xl font-bold transition-all cursor-pointer ${
+              simulatorMode === "generic"
+                ? "bg-[#00e699] text-[#070a0f] font-black shadow-md shadow-[#00e699]/20"
+                : "text-[#8b90a3] hover:text-white"
             }`}
           >
             Generic Growth Calculator
           </button>
           <button
-            onClick={() => setCalcType("company")}
-            className={`px-4 py-1.5 text-xs font-bold rounded-lg transition-colors ${
-              calcType === "company" ? "bg-[#0fa3b1] text-black" : "text-[#8b90a3] hover:text-white"
+            onClick={() => setSimulatorMode("backtest")}
+            className={`px-4 py-2 rounded-xl font-bold transition-all cursor-pointer ${
+              simulatorMode === "backtest"
+                ? "bg-[#00e699] text-[#070a0f] font-black shadow-md shadow-[#00e699]/20"
+                : "text-[#8b90a3] hover:text-white"
             }`}
           >
             Company Stock Backtest
@@ -156,181 +166,360 @@ export default function SimulatorPage() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Controls Card */}
-        <div className="bento-card space-y-5">
-          <span className="text-xs font-bold uppercase tracking-wider text-[#8b90a3] block">
-            Simulation Parameters
-          </span>
+      {/* TOP 3 SUMMARY KPI CARDS */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+        
+        {/* TOTAL INVESTED */}
+        <div className="bg-[#0f1522] border border-[#1b2230] p-5 rounded-3xl shadow-xl flex flex-col justify-between">
+          <div className="flex items-center justify-between text-[#8b90a3] text-[10px] font-extrabold uppercase tracking-widest">
+            <span>Total Invested</span>
+            <BarChart3 className="w-5 h-5 text-blue-400" />
+          </div>
+          <div className="text-3xl font-black text-white font-mono my-3 tracking-tight">
+            ₹{trajectoryData.finalResult.invested.toLocaleString("en-IN")}
+          </div>
+          <div className="text-[10px] text-[#8b90a3] font-medium">
+            Principal capital deployed over {durationYears} years
+          </div>
+        </div>
 
-          {/* Company Search Bar with Instant Recommendations */}
-          {calcType === "company" && (
-            <div className="relative" ref={dropdownRef}>
-              <label className="text-xs font-bold text-[#8b90a3] block mb-1">Search & Select Company</label>
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Type company name (e.g. Tata, Apple, HDFC)..."
-                className="w-full bg-[#0d1117] border border-[#2d333b] rounded-xl px-3 py-2 text-xs text-white placeholder-[#8b90a3] focus:outline-none focus:border-[#0fa3b1]"
-              />
+        {/* WEALTH GAINED */}
+        <div className="bg-[#0f1522] border border-[#1b2230] p-5 rounded-3xl shadow-xl flex flex-col justify-between">
+          <div className="flex items-center justify-between text-[#8b90a3] text-[10px] font-extrabold uppercase tracking-widest">
+            <span>Wealth Gained</span>
+            <TrendingUp className="w-5 h-5 text-[#00e699]" />
+          </div>
+          <div className="text-3xl font-black text-[#00e699] font-mono my-3 tracking-tight">
+            +₹{trajectoryData.finalResult.wealthGained.toLocaleString("en-IN")}
+          </div>
+          <div className="text-[10px] text-[#00e699] font-bold">
+            ▲ Net compound growth profit generated
+          </div>
+        </div>
 
-              {/* Recommended Dropdown List */}
-              {isDropdownOpen && searchResults.length > 0 && (
-                <div className="absolute top-full left-0 right-0 mt-2 bg-[#161b22] border border-[#2d333b] rounded-xl shadow-2xl overflow-hidden z-50 max-h-56 overflow-y-auto">
-                  {searchResults.map((item) => (
-                    <button
-                      key={item.symbol}
-                      onClick={() => handleSelectCompany(item)}
-                      className="w-full text-left px-3 py-2.5 hover:bg-[#0d1117] border-b border-[#2d333b]/50 last:border-0 flex items-center justify-between transition-colors"
-                    >
-                      <div>
-                        <span className="text-xs font-bold text-white block">{item.symbol}</span>
-                        <span className="text-[10px] text-[#8b90a3] block truncate">{item.name}</span>
-                      </div>
-                      <span className="text-[10px] text-[#06c8d9] font-mono bg-[#0fa3b1]/10 px-2 py-0.5 rounded">
-                        {item.exchange}
-                      </span>
-                    </button>
-                  ))}
-                </div>
-              )}
+        {/* PROJECTED VALUE */}
+        <div className="bg-[#0f1522] border border-[#1b2230] p-5 rounded-3xl shadow-xl flex flex-col justify-between">
+          <div className="flex items-center justify-between text-[#8b90a3] text-[10px] font-extrabold uppercase tracking-widest">
+            <span>Projected Value</span>
+            <DollarSign className="w-5 h-5 text-[#ffcc00]" />
+          </div>
+          <div className="text-3xl font-black text-white font-mono my-3 tracking-tight">
+            ₹{trajectoryData.finalResult.totalValue.toLocaleString("en-IN")}
+          </div>
+          <div className="text-[10px] text-[#ffcc00] font-bold">
+            Maturity evaluation at {activeRate}% annual CAGR
+          </div>
+        </div>
 
-              {loadingStock ? (
-                <span className="text-[10px] text-[#06c8d9] mt-1 block font-semibold">
-                  Syncing live metrics for {selectedSymbol}...
-                </span>
-              ) : stockData ? (
-                <div className="mt-2 p-2.5 bg-[#0d1117] border border-[#0fa3b1]/40 rounded-xl">
-                  <span className="text-[10px] text-[#06c8d9] font-bold uppercase block">Selected Stock</span>
-                  <span className="text-xs font-black text-white block truncate">{stockData.name}</span>
-                  <span className="text-[10px] text-[#8b90a3]">
-                    1-Yr Return: <span className="text-[#00d084] font-bold">+{stockData.overview.period_change_pct}%</span>
-                  </span>
-                </div>
-              ) : null}
-            </div>
-          )}
+      </div>
 
-          {/* SIP / Lump Sum Toggle */}
-          <div className="flex p-1 bg-[#0d1117] border border-[#2d333b] rounded-xl">
+      {/* MAIN CONTENT WORKSPACE GRID */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        
+        {/* LEFT PANEL: SIMULATION PARAMETERS CONTROL CARD */}
+        <div className="lg:col-span-4 bg-[#0f1522] border border-[#1b2230] p-6 rounded-3xl shadow-xl space-y-6">
+          <div className="border-b border-[#1b2230] pb-3 flex items-center justify-between">
+            <span className="text-xs font-black uppercase tracking-wider text-white flex items-center gap-2">
+              <Zap className="w-4 h-4 text-[#00e699]" />
+              Simulation Parameters
+            </span>
+          </div>
+
+          {/* SIP vs Lump Sum Switcher */}
+          <div className="grid grid-cols-2 gap-2 bg-[#070a0f] p-1.5 rounded-2xl border border-[#242f45] text-xs font-mono">
             <button
-              onClick={() => setMode("sip")}
-              className={`flex-1 py-1.5 text-xs font-bold rounded-lg transition-colors ${
-                mode === "sip" ? "bg-[#0fa3b1] text-black" : "text-[#8b90a3] hover:text-white"
+              onClick={() => setInvestmentType("sip")}
+              className={`py-2 rounded-xl font-bold transition-all cursor-pointer ${
+                investmentType === "sip"
+                  ? "bg-[#00e699] text-[#070a0f] font-black"
+                  : "text-[#8b90a3] hover:text-white"
               }`}
             >
               Monthly SIP
             </button>
             <button
-              onClick={() => setMode("lumpsum")}
-              className={`flex-1 py-1.5 text-xs font-bold rounded-lg transition-colors ${
-                mode === "lumpsum" ? "bg-[#0fa3b1] text-black" : "text-[#8b90a3] hover:text-white"
+              onClick={() => setInvestmentType("lump")}
+              className={`py-2 rounded-xl font-bold transition-all cursor-pointer ${
+                investmentType === "lump"
+                  ? "bg-[#00e699] text-[#070a0f] font-black"
+                  : "text-[#8b90a3] hover:text-white"
               }`}
             >
               Lump Sum
             </button>
           </div>
 
-          {/* Amount Slider */}
-          <div>
-            <div className="flex justify-between text-xs mb-1.5">
-              <span className="text-[#8b90a3]">{mode === "sip" ? "Monthly Investment" : "One-Time Investment"}</span>
-              <span className="font-bold text-white">₹{amount.toLocaleString()}</span>
+          {/* SLIDER 1: Investment Amount */}
+          {investmentType === "sip" ? (
+            <div className="space-y-2">
+              <div className="flex justify-between text-xs font-mono">
+                <span className="text-[#8b90a3]">Monthly Investment</span>
+                <span className="font-bold text-white">₹{monthlyAmount.toLocaleString("en-IN")}</span>
+              </div>
+              <input
+                type="range"
+                min="500"
+                max="200000"
+                step="500"
+                value={monthlyAmount}
+                onChange={(e) => setMonthlyAmount(Number(e.target.value))}
+                className="w-full accent-[#00e699] bg-[#070a0f] h-2 rounded-lg cursor-pointer"
+              />
             </div>
-            <input
-              type="range"
-              min={mode === "sip" ? 500 : 5000}
-              max={mode === "sip" ? 200000 : 5000000}
-              step={mode === "sip" ? 500 : 5000}
-              value={amount}
-              onChange={(e) => setAmount(Number(e.target.value))}
-              className="w-full accent-[#0fa3b1]"
-            />
-          </div>
+          ) : (
+            <div className="space-y-2">
+              <div className="flex justify-between text-xs font-mono">
+                <span className="text-[#8b90a3]">Lump Sum Investment</span>
+                <span className="font-bold text-white">₹{lumpSumAmount.toLocaleString("en-IN")}</span>
+              </div>
+              <input
+                type="range"
+                min="5000"
+                max="5000000"
+                step="5000"
+                value={lumpSumAmount}
+                onChange={(e) => setLumpSumAmount(Number(e.target.value))}
+                className="w-full accent-[#00e699] bg-[#070a0f] h-2 rounded-lg cursor-pointer"
+              />
+            </div>
+          )}
 
-          {/* Duration Slider */}
-          <div>
-            <div className="flex justify-between text-xs mb-1.5">
+          {/* SLIDER 2: Duration */}
+          <div className="space-y-2">
+            <div className="flex justify-between text-xs font-mono">
               <span className="text-[#8b90a3]">Duration (Years)</span>
-              <span className="font-bold text-white">{years} Years</span>
+              <span className="font-bold text-white">{durationYears} Years</span>
             </div>
             <input
               type="range"
-              min={1}
-              max={30}
-              value={years}
-              onChange={(e) => setYears(Number(e.target.value))}
-              className="w-full accent-[#0fa3b1]"
+              min="1"
+              max="30"
+              step="1"
+              value={durationYears}
+              onChange={(e) => setDurationYears(Number(e.target.value))}
+              className="w-full accent-[#00e699] bg-[#070a0f] h-2 rounded-lg cursor-pointer"
             />
           </div>
 
-          {/* Expected Return Slider */}
-          <div>
-            <div className="flex justify-between text-xs mb-1.5">
-              <span className="text-[#8b90a3]">Expected Annual Return</span>
-              <span className="font-bold text-[#06c8d9]">{expectedReturn}%</span>
+          {/* MODE SPECIFIC CONTROLS */}
+          {simulatorMode === "generic" ? (
+            /* SLIDER 3: Expected Annual Return */
+            <div className="space-y-2">
+              <div className="flex justify-between text-xs font-mono">
+                <span className="text-[#8b90a3]">Expected Annual Return</span>
+                <span className="font-bold text-[#00e699]">{expectedReturnRate}%</span>
+              </div>
+              <input
+                type="range"
+                min="1"
+                max="35"
+                step="0.5"
+                value={expectedReturnRate}
+                onChange={(e) => setExpectedReturnRate(Number(e.target.value))}
+                className="w-full accent-[#00e699] bg-[#070a0f] h-2 rounded-lg cursor-pointer"
+              />
             </div>
-            <input
-              type="range"
-              min={1}
-              max={40}
-              step={0.5}
-              value={expectedReturn}
-              onChange={(e) => setExpectedReturn(Number(e.target.value))}
-              className="w-full accent-[#0fa3b1]"
-            />
+          ) : (
+            /* STOCK BACKTEST SELECTOR */
+            <div className="space-y-3 pt-1 border-t border-[#1b2230]">
+              <span className="text-xs font-bold text-[#8b90a3] uppercase block">
+                Select Benchmark Asset
+              </span>
+              <div className="space-y-2">
+                {STOCK_PRESETS.map((stk) => (
+                  <div
+                    key={stk.symbol}
+                    onClick={() => setSelectedStock(stk)}
+                    className={`p-3 rounded-2xl border cursor-pointer transition-all flex items-center justify-between text-xs font-mono ${
+                      selectedStock.symbol === stk.symbol
+                        ? "bg-[#00e699]/15 border-[#00e699] text-white"
+                        : "bg-[#070a0f] border-[#242f45] text-[#8b90a3] hover:border-white/30"
+                    }`}
+                  >
+                    <div>
+                      <strong className="text-white block font-sans text-xs">{stk.name}</strong>
+                      <span className="text-[10px] text-[#00e699]">{stk.symbol}</span>
+                    </div>
+                    <div className="text-right">
+                      <span className="font-bold text-[#ffcc00] block">+{stk.historicalCAGR}% CAGR</span>
+                      <span className="text-[9px] text-[#8b90a3]">{stk.category}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* BREAKDOWN ALLOCATION MATRIX */}
+          <div className="bg-[#070a0f] border border-[#242f45] p-4 rounded-2xl space-y-3 text-xs font-mono">
+            <span className="text-[10px] font-bold text-[#8b90a3] uppercase block">
+              Asset Allocation Ratio
+            </span>
+            <div className="w-full bg-[#1b2230] h-3 rounded-full overflow-hidden flex">
+              <div
+                className="bg-blue-500 h-full transition-all duration-500"
+                style={{
+                  width: `${(
+                    (trajectoryData.finalResult.invested / (trajectoryData.finalResult.totalValue || 1)) *
+                    100
+                  ).toFixed(1)}%`,
+                }}
+              />
+              <div
+                className="bg-[#00e699] h-full transition-all duration-500"
+                style={{
+                  width: `${(
+                    (trajectoryData.finalResult.wealthGained / (trajectoryData.finalResult.totalValue || 1)) *
+                    100
+                  ).toFixed(1)}%`,
+                }}
+              />
+            </div>
+
+            <div className="flex justify-between text-[11px] pt-1">
+              <span className="flex items-center gap-1.5 text-blue-400">
+                <span className="w-2.5 h-2.5 rounded-full bg-blue-500" /> Invested (
+                {(
+                  (trajectoryData.finalResult.invested / (trajectoryData.finalResult.totalValue || 1)) *
+                  100
+                ).toFixed(0)}
+                %)
+              </span>
+              <span className="flex items-center gap-1.5 text-[#00e699]">
+                <span className="w-2.5 h-2.5 rounded-full bg-[#00e699]" /> Wealth Gained (
+                {(
+                  (trajectoryData.finalResult.wealthGained / (trajectoryData.finalResult.totalValue || 1)) *
+                  100
+                ).toFixed(0)}
+                %)
+              </span>
+            </div>
           </div>
         </div>
 
-        {/* Results Cards & Trajectory Chart */}
-        <div className="lg:col-span-2 space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="bento-card">
-              <span className="text-[10px] font-bold text-[#8b90a3] uppercase block">Total Invested</span>
-              <span className="text-xl font-black text-white mt-1 block">₹{simulation.totalInvested.toLocaleString()}</span>
-            </div>
-            <div className="bento-card">
-              <span className="text-[10px] font-bold text-[#8b90a3] uppercase block">Wealth Gained</span>
-              <span className="text-xl font-black text-[#00d084] mt-1 block">+₹{simulation.wealthGained.toLocaleString()}</span>
-            </div>
-            <div className="bento-card">
-              <span className="text-[10px] font-bold text-[#8b90a3] uppercase block">Projected Value</span>
-              <span className="text-xl font-black text-[#06c8d9] mt-1 block">₹{simulation.finalBalance.toLocaleString()}</span>
-            </div>
+        {/* RIGHT PANEL: ANIMATED REALISTIC COMPOUND TRAJECTORY CHART */}
+        <div className="lg:col-span-8 bg-[#0f1522] border border-[#1b2230] p-6 rounded-3xl shadow-xl flex flex-col justify-between space-y-4">
+          
+          <div className="flex items-center justify-between border-b border-[#1b2230] pb-3">
+            <span className="text-xs font-black uppercase tracking-wider text-white flex items-center gap-2">
+              <Activity className="w-4 h-4 text-[#00e699]" />
+              Compound Trajectory: {simulatorMode === "backtest" ? `${selectedStock.name} (${selectedStock.symbol})` : "Custom CAGR Strategy"}
+            </span>
+            <span className="text-[10px] font-mono font-bold text-[#00e699] bg-[#00e699]/10 border border-[#00e699]/30 px-2.5 py-1 rounded-md">
+              {durationYears} Year Projection
+            </span>
           </div>
 
-          <div className="bento-card">
-            <div className="flex items-center justify-between mb-4">
-              <span className="text-xs font-bold uppercase tracking-wider text-[#8b90a3]">
-                Compound Trajectory: {calcType === "company" && stockData ? stockData.name : "Custom CAGR Strategy"}
-              </span>
-              <span className="text-xs font-bold text-[#06c8d9] bg-[#0fa3b1]/10 px-2.5 py-1 rounded-md">
-                {years} Year Projection
-              </span>
-            </div>
+          {/* DYNAMIC SVG ANIMATED GRAPH */}
+          <div className="relative h-72 w-full bg-[#070a0f] rounded-2xl border border-[#242f45] p-4 flex flex-col justify-between overflow-hidden">
+            
+            <svg className="w-full h-full overflow-visible" viewBox="0 0 750 260" preserveAspectRatio="none">
+              <defs>
+                <linearGradient id="simAreaGrad" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="#00e699" stopOpacity="0.35" />
+                  <stop offset="100%" stopColor="#00e699" stopOpacity="0.0" />
+                </linearGradient>
+              </defs>
 
-            <div className="h-72">
-              <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={simulation.trajectory}>
-                  <defs>
-                    <linearGradient id="colorValue" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#0fa3b1" stopOpacity={0.4} />
-                      <stop offset="95%" stopColor="#0fa3b1" stopOpacity={0} />
-                    </linearGradient>
-                  </defs>
-                  <XAxis dataKey="year" stroke="#8b90a3" fontSize={10} tickFormatter={(y) => `Yr ${y}`} />
-                  <YAxis stroke="#8b90a3" fontSize={10} tickFormatter={(v) => `₹${(v / 1000).toFixed(0)}k`} />
-                  <Tooltip
-                    contentStyle={{ backgroundColor: "#161b22", borderColor: "#2d333b", borderRadius: "12px" }}
-                    formatter={(val: any) => [`₹${Number(val).toLocaleString()}`, "Projected Value"]}
+              {/* Background Horizontal Grid lines */}
+              <line x1="0" y1="45" x2="750" y2="45" stroke="#1f293d" strokeWidth="1" strokeDasharray="4 4" />
+              <line x1="0" y1="115" x2="750" y2="115" stroke="#1f293d" strokeWidth="1" strokeDasharray="4 4" />
+              <line x1="0" y1="185" x2="750" y2="185" stroke="#1f293d" strokeWidth="1" strokeDasharray="4 4" />
+
+              {/* Gradient Area Fill under projected trajectory */}
+              {svgChart.areaString && (
+                <path d={svgChart.areaString} fill="url(#simAreaGrad)" className="transition-all duration-500" />
+              )}
+
+              {/* Baseline Invested Principal Path */}
+              {svgChart.investedPathString && (
+                <path
+                  d={svgChart.investedPathString}
+                  fill="none"
+                  stroke="#3b82f6"
+                  strokeWidth="2"
+                  strokeDasharray="5 5"
+                  className="transition-all duration-500 opacity-60"
+                />
+              )}
+
+              {/* Main Projected Compound Growth Path */}
+              {svgChart.pathString && (
+                <path
+                  d={svgChart.pathString}
+                  fill="none"
+                  stroke="#00e699"
+                  strokeWidth="3.5"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  className="transition-all duration-500"
+                />
+              )}
+
+              {/* Interactive Data Dots along the path */}
+              {svgChart.pointsMapped.map((pt) => (
+                <g key={pt.year} className="cursor-pointer group">
+                  <circle
+                    cx={pt.x}
+                    cy={pt.y}
+                    r="5"
+                    fill="#00e699"
+                    stroke="#070a0f"
+                    strokeWidth="2"
+                    className="transition-all hover:scale-150"
+                    onMouseEnter={() => setHoveredPoint({ year: pt.year, invested: pt.invested, value: pt.totalValue, x: pt.x, y: pt.y })}
+                    onMouseLeave={() => setHoveredPoint(null)}
                   />
-                  <Area type="monotone" dataKey="expected_value" stroke="#06c8d9" strokeWidth={2} fillOpacity={1} fill="url(#colorValue)" />
-                </AreaChart>
-              </ResponsiveContainer>
+                </g>
+              ))}
+            </svg>
+
+            {/* Hover Tooltip Overlay */}
+            {hoveredPoint && (
+              <div
+                className="absolute z-20 bg-[#0f1522] border border-[#00e699] p-3 rounded-xl shadow-2xl pointer-events-none text-xs font-mono space-y-1 transform -translate-x-1/2 -translate-y-full"
+                style={{ left: `${(hoveredPoint.x / 750) * 100}%`, top: `${(hoveredPoint.y / 260) * 100}%` }}
+              >
+                <div className="font-bold text-white border-b border-[#242f45] pb-1">Year {hoveredPoint.year} Projection</div>
+                <div className="text-blue-400">Invested: ₹{hoveredPoint.invested.toLocaleString("en-IN")}</div>
+                <div className="text-[#00e699]">Total Value: ₹{hoveredPoint.value.toLocaleString("en-IN")}</div>
+              </div>
+            )}
+
+            {/* X-AXIS YEAR TICK LABELS */}
+            <div className="flex justify-between text-[10px] text-[#8b90a3] font-mono border-t border-[#1b2230] pt-2">
+              {trajectoryData.points.map((p) => (
+                <span key={p.year}>Yr {p.year}</span>
+              ))}
             </div>
           </div>
+
+          {/* BOTTOM DETAILED YEARLY PROJECTION TABLE */}
+          <div className="space-y-2">
+            <span className="text-[11px] font-bold text-[#8b90a3] uppercase block tracking-wider">
+              Yearly Milestones Breakdown
+            </span>
+            <div className="grid grid-cols-4 gap-2 text-center text-xs font-mono">
+              {[1, Math.ceil(durationYears / 2), durationYears].map((yrIndex) => {
+                const milestone = trajectoryData.points.find((p) => p.year === yrIndex);
+                if (!milestone) return null;
+                return (
+                  <div key={yrIndex} className="bg-[#070a0f] border border-[#242f45] p-3 rounded-2xl space-y-1">
+                    <span className="text-[10px] font-bold text-[#8b90a3] block">Year {milestone.year}</span>
+                    <span className="text-[#00e699] font-black block">₹{milestone.totalValue.toLocaleString("en-IN")}</span>
+                    <span className="text-[9px] text-blue-400 block">Inv: ₹{milestone.invested.toLocaleString("en-IN")}</span>
+                  </div>
+                );
+              })}
+              <div className="bg-[#070a0f] border border-[#00e699]/30 p-3 rounded-2xl space-y-1 flex flex-col justify-center items-center">
+                <span className="text-[10px] font-bold text-[#00e699] block">CAGR Target</span>
+                <span className="text-white font-black text-sm">{activeRate}%</span>
+              </div>
+            </div>
+          </div>
+
         </div>
+
       </div>
     </div>
   );
